@@ -5,12 +5,14 @@ from cysounddevice.types cimport *
 from cysounddevice.devices cimport DeviceInfo
 
 cdef class Stream:
+    cdef readonly DeviceInfo device
     cdef readonly StreamInfo stream_info
     cdef readonly StreamCallback callback_handler
     cdef PaStream* _pa_stream_ptr
     cdef unsigned long _frames_per_buffer
     cdef readonly bint active
 
+    cpdef check(self)
     cpdef open(self)
     cpdef close(self)
     cdef int stream_callback(self, const void* in_bfr,
@@ -20,7 +22,7 @@ cdef class Stream:
                              PaStreamCallbackFlags status_flags) except -1
 
 cdef class StreamInfo:
-    cdef SampleFormat* sample_format
+    cdef SampleFormat sample_format
     cdef PaStreamParameters _pa_input_params
     cdef PaStreamParameters _pa_output_params
     cdef PaStreamFlags _pa_flags

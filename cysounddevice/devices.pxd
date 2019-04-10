@@ -1,14 +1,17 @@
 # cython: language_level=3
 
 from cysounddevice.pawrapper cimport *
+from cysounddevice.streams cimport Stream
 
 cdef class DeviceInfo:
     cdef readonly PaDeviceIndex index
     cdef readonly HostApiInfo host_api
     cdef const PaDeviceInfo* _ptr
     cdef readonly bint active
+    cdef readonly Stream stream
 
     cdef void _get_info(self) except *
+    cpdef Stream open_stream(self)
     cpdef close(self)
 
 cdef class HostApiInfo:

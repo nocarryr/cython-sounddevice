@@ -51,12 +51,20 @@ cdef class DeviceInfo:
         return self._ptr.defaultSampleRate
     cdef void _get_info(self) except *:
         self._ptr = Pa_GetDeviceInfo(self.index)
+    cpdef Stream open_stream(self):
+        if self.active:
+            return
+        self.stream = Stream(self)
+        self.active = True
+        return self.stream
     cpdef close(self):
         """Close the device if active
         """
         if not self.active:
             return
         self.active = False
+        self.stream.close()
+        self.stream = None
     def __repr__(self):
         return '<{self.__class__.__name__}: {self}>'.format(self=self)
     def __str__(self):
@@ -162,8 +170,12 @@ cdef class PortAudio:
             return
         self._initialized = False
         cdef DeviceInfo device
-        for device in self.iter_devices():
-            device.close()
+        try:
+            for device in self.iter_devices():
+                device.close()
+        except:
+            import traceback
+            traceback.print_exc()
         self.host_apis_by_paindex.clear()
         self.host_apis_by_name.clear()
         self.devices_by_name.clear()
