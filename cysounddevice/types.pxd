@@ -15,12 +15,22 @@ ctypedef np.npy_bool BOOL_DTYPE_t
 # ctypedef np.int32 INT32_DTYPE_t
 # ctypedef np.int16 INT16_DTYPE_t
 # ctypedef np.float32_t FLOAT32_DTYPE_t
-ctypedef np.int8_t INT8_DTYPE_t
-ctypedef np.uint8_t UINT8_DTYPE_t
-ctypedef np.int32_t INT24_DTYPE_t
-ctypedef np.int32_t INT32_DTYPE_t
-ctypedef np.int16_t INT16_DTYPE_t
-ctypedef np.float32_t FLOAT32_DTYPE_t
+# ctypedef np.int8_t INT8_DTYPE_t
+# ctypedef np.uint8_t UINT8_DTYPE_t
+# ctypedef np.int32_t INT24_DTYPE_t
+# ctypedef np.int32_t INT32_DTYPE_t
+# ctypedef np.int16_t INT16_DTYPE_t
+# ctypedef np.float32_t FLOAT32_DTYPE_t
+ctypedef int8_t INT8_DTYPE_t
+ctypedef uint8_t UINT8_DTYPE_t
+ctypedef int32_t INT24_DTYPE_t
+ctypedef int32_t INT32_DTYPE_t
+ctypedef int16_t INT16_DTYPE_t
+ctypedef float FLOAT32_DTYPE_t
+
+ctypedef double SAMPLE_RATE_t
+ctypedef unsigned int BLOCK_t
+ctypedef unsigned long long SAMPLE_INDEX_t
 
 
 
@@ -46,3 +56,29 @@ ctypedef enum IOType:
     IOType_Input = 1
     IOType_Output = 2
     IOType_Duplex = 4
+
+cdef struct SampleTime_s:
+    PaTime pa_time
+    PaTime time_offset
+    SAMPLE_RATE_t sample_rate
+    Py_ssize_t block_size
+    BLOCK_t block
+    Py_ssize_t block_index
+    # SAMPLE_INDEX_t sample_index
+
+cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *
+
+cdef class SampleTime:
+    cdef SampleTime_s data
+
+    @staticmethod
+    cdef SampleTime from_struct(SampleTime_s* data)
+
+    cpdef SampleTime copy(self)
+    cdef void _set_pa_time(self, PaTime value) except *
+    cdef void _set_time_offset(self, PaTime value) except *
+    cdef void _set_block(self, BLOCK_t value) except *
+    cdef void _set_block_index(self, Py_ssize_t value) except *
+    cdef SAMPLE_INDEX_t _get_sample_index(self)
+    cdef void _set_sample_index(self, SAMPLE_INDEX_t value) except *
+    cdef void _update_time_vars(self) except *
