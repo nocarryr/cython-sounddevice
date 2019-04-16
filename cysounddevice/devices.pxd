@@ -33,5 +33,6 @@ cdef class PortAudio:
     cpdef open(self)
     cpdef close(self)
     cpdef DeviceInfo get_device_by_name(self, str name)
+    cpdef DeviceInfo get_device_by_index(self, PaDeviceIndex i)
     cpdef HostApiInfo get_host_api_by_name(self, str name)
     cdef void _get_info(self) except *

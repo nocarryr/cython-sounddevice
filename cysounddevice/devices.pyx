@@ -194,6 +194,13 @@ cdef class PortAudio:
             :class:`DeviceInfo` instance
         """
         return self.devices_by_name[name]
+    cpdef DeviceInfo get_device_by_index(self, PaDeviceIndex i):
+        """Get a device by its PortAudio index
+
+        Returns:
+            :class:`DeviceInfo` instance
+        """
+        return self.devices_by_paindex[i]
     cpdef HostApiInfo get_host_api_by_name(self, str name):
         """Get a HostApi by name
 
