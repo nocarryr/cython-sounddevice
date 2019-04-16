@@ -28,10 +28,10 @@ cdef TestData_s TestData
 
 cdef class Stream:
     def __cinit__(self, DeviceInfo device):
+        self._frames_per_buffer = 512
         self.device = device
         self.stream_info = StreamInfo(device)
         self.callback_handler = StreamCallback(self)
-        self._frames_per_buffer = 512
         self.active = False
     @property
     def frames_per_buffer(self):
@@ -55,6 +55,7 @@ cdef class Stream:
         print('sample_size={}, should be {} bits'.format(
             sample_size, self.stream_info.sample_format.bit_width,
         ))
+        self.callback_handler._build_user_data()
         handle_error(Pa_OpenStream(
             &ptr,
             &self.stream_info._pa_input_params,
@@ -64,7 +65,7 @@ cdef class Stream:
             self.stream_info._pa_flags,
             self.callback_handler._pa_callback_ptr,
             # &TestData,
-            <void*>self.callback_handler,
+            <void*>self.callback_handler.user_data,
         ))
         self.active = True
         cdef const PaStreamInfo* info = Pa_GetStreamInfo(ptr)
@@ -96,38 +97,6 @@ cdef class Stream:
         return self
     def __exit__(self, *args):
         self.close()
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    @cython.cdivision(True)
-    cdef int stream_callback(self, const void *in_bfr,
-                             void *out_bfr,
-                             unsigned long frame_count,
-                             const PaStreamCallbackTimeInfo* time_info,
-                             PaStreamCallbackFlags status_flags) except -1:
-        cdef unsigned long i
-        # print('stream_callback: {}'.format(frame_count))
-        # cdef unsigned long in_size = frame_count * self.stream_info.input_channels
-        cdef unsigned long out_size = frame_count * self.stream_info.output_channels
-        cdef char *cbfr = <char *>out_bfr
-        cdef float *fbfr = <float *>cbfr
-        cdef float value
-
-        # cdef float *out_view = <float *>out_bfr
-        # cdef view.array out_arr = view.array(shape=(1, frame_count * out_size), itemsize=sizeof(float), format='f', allocate_buffer=False)
-        # out_arr.data = <char *>out_bfr
-
-        for i in range(frame_count):
-            # out_view[i] = 0
-            value = (i / <float>frame_count * 2) - 1
-
-            # left
-            fbfr[0] = value
-            fbfr += 1
-
-            # right
-            fbfr[0] = 0
-            fbfr += 1
-        return paContinue
 
 cdef class StreamInfo:
     def __cinit__(self, DeviceInfo device):
@@ -178,22 +147,41 @@ cdef class StreamInfo:
         self._pa_flags = flags
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef int _stream_callback(const void* in_bfr,
                           void* out_bfr,
                           unsigned long frame_count,
                           const PaStreamCallbackTimeInfo* time_info,
                           PaStreamCallbackFlags status_flags,
                           void* user_data) with gil:
-    cdef StreamCallback obj = <StreamCallback>user_data
+    cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
+    cdef SampleTime_s* start_time
+    cdef int r
+    cdef unsigned long i, bfr_size
+    cdef char *in_ptr = <char *>in_bfr
+    cdef char *out_ptr = <char *>out_bfr
 
-    return obj.stream_callback(in_bfr, out_bfr, frame_count, time_info, status_flags)
-    # print('cb')
-    # cdef TestData_s* test_data = <TestData_s*>user_data
-    # if test_data.count >= 20:
-    #     return paComplete
-    # test_data.count = test_data.count + 1
-    # return paContinue
+    if cb_data.input_channels > 0:
+        if cb_data.in_buffer.read_available > 0:
+            start_time = sample_buffer_read(cb_data.in_buffer, in_ptr, frame_count)
+            if start_time == NULL:
+                return paAbort
+        cb_data.in_buffer.current_block += 1
+    if cb_data.output_channels > 0:
+        if cb_data.out_buffer.write_available > 0:
+            r = sample_buffer_write(cb_data.out_buffer, out_ptr, frame_count)
+            if r != 1:
+                return paAbort
+        cb_data.out_buffer.current_block += 1
+    return paContinue
 
+
+cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
+    if user_data.in_buffer != NULL:
+        sample_buffer_destroy(user_data.in_buffer)
+    if user_data.out_buffer != NULL:
+        sample_buffer_destroy(user_data.out_buffer)
 
 cdef class StreamCallback:
     def __cinit__(self, Stream stream):
@@ -204,8 +192,39 @@ cdef class StreamCallback:
         self.output_underflow = False
         self.output_overflow = False
         self.priming_output = False
+        self.user_data = NULL
+        self.sample_time = SampleTime(stream.stream_info.sample_rate, stream._frames_per_buffer)
     def __init__(self, *args):
         self._update_pa_data()
+    def __dealloc__(self):
+        if self.user_data:
+            callback_user_data_destroy(self.user_data)
+            PyMem_Free(self.user_data)
+    cdef void _build_user_data(self, Py_ssize_t buffer_len=32) except *:
+        if self.user_data:
+            callback_user_data_destroy(self.user_data)
+            PyMem_Free(self.user_data)
+            self.user_data = NULL
+        cdef StreamInfo info = self.stream.stream_info
+        cdef int in_chan = info.input_channels
+        cdef int out_chan = info.output_channels
+        cdef Py_ssize_t itemsize = info.sample_format.bit_width // 8
+
+        cdef CallbackUserData* user_data = <CallbackUserData*>PyMem_Malloc(sizeof(CallbackUserData))
+        if not user_data:
+            raise MemoryError()
+
+        print('{!r}, bfr_len={}, in={}, out={}, itemsize={}'.format(
+            self.sample_time, buffer_len, in_chan, out_chan, itemsize,
+        ))
+        if in_chan > 0:
+            user_data.in_buffer = sample_buffer_create(self.sample_time, buffer_len, in_chan, itemsize)
+        if out_chan > 0:
+            user_data.out_buffer = sample_buffer_create(self.sample_time, buffer_len, out_chan, itemsize)
+        user_data.input_channels = in_chan
+        user_data.output_channels = out_chan
+        self.user_data = user_data
+
     cdef void _update_pa_data(self) except *:
         cdef PaStreamCallbackFlags flags = 0
 
@@ -219,9 +238,3 @@ cdef class StreamCallback:
             flags |= 8
         if self.priming_output:
             flags |= 16
-    cdef int stream_callback(self, const void* in_bfr,
-                             void* out_bfr,
-                             unsigned long frame_count,
-                             const PaStreamCallbackTimeInfo* time_info,
-                             PaStreamCallbackFlags status_flags) except -1:
-        return self.stream.stream_callback(in_bfr, out_bfr, frame_count, time_info, status_flags)

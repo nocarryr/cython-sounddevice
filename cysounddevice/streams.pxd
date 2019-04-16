@@ -3,6 +3,13 @@
 from cysounddevice.pawrapper cimport *
 from cysounddevice.types cimport *
 from cysounddevice.devices cimport DeviceInfo
+from cysounddevice.buffer cimport *
+
+cdef struct CallbackUserData:
+    int input_channels
+    int output_channels
+    SampleBuffer* in_buffer
+    SampleBuffer* out_buffer
 
 cdef class Stream:
     cdef readonly DeviceInfo device
@@ -15,11 +22,6 @@ cdef class Stream:
     cpdef check(self)
     cpdef open(self)
     cpdef close(self)
-    cdef int stream_callback(self, const void* in_bfr,
-                             void* out_bfr,
-                             unsigned long frame_count,
-                             const PaStreamCallbackTimeInfo* time_info,
-                             PaStreamCallbackFlags status_flags) except -1
 
 cdef class StreamInfo:
     cdef SampleFormat sample_format
@@ -39,12 +41,10 @@ cdef class StreamCallback:
     cdef PaStreamCallbackFlags _pa_flags
     cdef PaStreamCallback* _pa_callback_ptr
     cdef Stream stream
+    cdef CallbackUserData* user_data
+    cdef readonly SampleTime sample_time
     cdef public bint input_underflow, input_overflow
     cdef public bint output_underflow, output_overflow, priming_output
 
+    cdef void _build_user_data(self, Py_ssize_t buffer_len=*) except *
     cdef void _update_pa_data(self) except *
-    cdef int stream_callback(self, const void* in_bfr,
-                             void* out_bfr,
-                             unsigned long frame_count,
-                             const PaStreamCallbackTimeInfo* time_info,
-                             PaStreamCallbackFlags status_flags) except -1

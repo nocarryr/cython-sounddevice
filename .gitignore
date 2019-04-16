@@ -94,3 +94,4 @@ README.rst
 
 cysounddevice/*.c
 cysounddevice/*.html
+tests/*.c

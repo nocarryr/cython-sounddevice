@@ -19,6 +19,7 @@ ext_modules = cythonize(
     # gdb_debug=True,
     compiler_directives={
         'linetrace':True,
+        'embedsignature':True,
     },
 )
 
