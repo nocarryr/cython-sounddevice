@@ -25,7 +25,7 @@ cdef struct SampleBuffer:
     int read_available
     int write_available
 
-cdef SampleBuffer* sample_buffer_create(SampleTime start_time,
+cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         Py_ssize_t length,
                                         Py_ssize_t nchannels,
                                         Py_ssize_t itemsize) except *

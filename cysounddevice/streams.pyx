@@ -268,9 +268,9 @@ cdef class StreamCallback:
             self.sample_time, buffer_len, in_chan, out_chan, itemsize,
         ))
         if in_chan > 0:
-            user_data.in_buffer = sample_buffer_create(self.sample_time, buffer_len, in_chan, itemsize)
+            user_data.in_buffer = sample_buffer_create(self.sample_time.data, buffer_len, in_chan, itemsize)
         if out_chan > 0:
-            user_data.out_buffer = sample_buffer_create(self.sample_time, buffer_len, out_chan, itemsize)
+            user_data.out_buffer = sample_buffer_create(self.sample_time.data, buffer_len, out_chan, itemsize)
         user_data.input_channels = in_chan
         user_data.output_channels = out_chan
         self.user_data = user_data

@@ -8,7 +8,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cysounddevice.pawrapper cimport *
 from cysounddevice.types cimport *
 
-cdef SampleBuffer* sample_buffer_create(SampleTime start_time,
+cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         Py_ssize_t length,
                                         Py_ssize_t nchannels,
                                         Py_ssize_t itemsize) except *:
@@ -46,8 +46,8 @@ cdef SampleBuffer* sample_buffer_create(SampleTime start_time,
 
     cdef Py_ssize_t i
     cdef BufferItem* item
-    cdef SampleTime _start_time = start_time.copy()
-
+    cdef SampleTime_s _start_time
+    copy_sample_time_struct(&start_time, &_start_time)
     for i in range(length):
         item = &bfr.items[i]
         item.length = item_length
@@ -58,7 +58,7 @@ cdef SampleBuffer* sample_buffer_create(SampleTime start_time,
         item.bfr = <char *>malloc(bfr_length)
         if item.bfr == NULL:
             raise MemoryError()
-        copy_sample_time_struct(&_start_time.data, &item.start_time)
+        copy_sample_time_struct(&_start_time, &item.start_time)
         _start_time.block += 1
 
     return bfr
