@@ -27,17 +27,25 @@ cdef struct TestData_s:
 cdef TestData_s TestData
 
 cdef class Stream:
-    def __cinit__(self, DeviceInfo device):
+    def __cinit__(self, DeviceInfo device, *args, **kwargs):
         self._frames_per_buffer = 512
         self.device = device
-        self.stream_info = StreamInfo(device)
+        self.stream_info = StreamInfo(self, **kwargs)
         self.callback_handler = StreamCallback(self)
         self.active = False
+    def __init__(self, *args, **kwargs):
+        keys = ['frames_per_buffer']
+        for key in keys:
+            if key in kwargs:
+                val = kwargs[key]
+                setattr(self, key, val)
     @property
     def frames_per_buffer(self):
         return self._frames_per_buffer
     @frames_per_buffer.setter
     def frames_per_buffer(self, unsigned long value):
+        if self.active:
+            return
         self._frames_per_buffer = value
 
     cpdef check(self):
@@ -99,18 +107,19 @@ cdef class Stream:
         self.close()
 
 cdef class StreamInfo:
-    def __cinit__(self, DeviceInfo device):
+    def __cinit__(self, Stream stream, *args, **kwargs):
         cdef SampleFormat sf
+        cdef DeviceInfo device = stream.device
         sf.pa_ident = 1
         sf.bit_width = 32
         sf.is_float = True
         sf.is_signed = True
         sf.is_24bit = False
         self.sample_format = sf
-        self.device = device
-        self.input_channels = device.num_inputs
-        self.output_channels = device.num_outputs
-        self.sample_rate = device.default_sample_rate
+        self.stream = stream
+        self._input_channels = device.num_inputs
+        self._output_channels = device.num_outputs
+        self._sample_rate = device.default_sample_rate
         # self.sample_format = SampleFormats.sf_float32
         print('sample_format: ident={}, bit_width={}, signed={}, is_float={}'.format(
             self.sample_format.pa_ident, self.sample_format.bit_width,
@@ -121,7 +130,48 @@ cdef class StreamInfo:
         self.output_latency = 0
         self._pa_input_params.device = device.index
         self._pa_output_params.device = device.index
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
+        keys = ['input_channels', 'output_channels', 'sample_rate']
+        for key in keys:
+            if key in kwargs:
+                val = kwargs[key]
+                setattr(self, key, val)
+        self._update_pa_data()
+    @property
+    def device(self):
+        return self.stream.device
+    @property
+    def input_channels(self):
+        return self._input_channels
+    @input_channels.setter
+    def input_channels(self, int value):
+        if self.stream.active:
+            return
+        if value == self._input_channels:
+            return
+        self._input_channels = value
+        self._update_pa_data()
+    @property
+    def output_channels(self):
+        return self._output_channels
+    @output_channels.setter
+    def output_channels(self, int value):
+        if self.stream.active:
+            return
+        if value == self._output_channels:
+            return
+        self._output_channels = value
+        self._update_pa_data()
+    @property
+    def sample_rate(self):
+        return self._sample_rate
+    @sample_rate.setter
+    def sample_rate(self, double value):
+        if self.stream.active:
+            return
+        if value == self._sample_rate:
+            return
+        self._sample_rate = value
         self._update_pa_data()
     cdef void _update_pa_data(self) except *:
         self._pa_input_params.device = self.device.index

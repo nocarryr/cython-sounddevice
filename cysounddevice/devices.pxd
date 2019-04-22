@@ -11,7 +11,7 @@ cdef class DeviceInfo:
     cdef readonly Stream stream
 
     cdef void _get_info(self) except *
-    cpdef Stream open_stream(self)
+    cpdef Stream _open_stream(self, dict kwargs)
     cpdef close(self)
 
 cdef class HostApiInfo:

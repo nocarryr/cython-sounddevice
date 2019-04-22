@@ -28,9 +28,9 @@ cdef class StreamInfo:
     cdef PaStreamParameters _pa_input_params
     cdef PaStreamParameters _pa_output_params
     cdef PaStreamFlags _pa_flags
-    cdef DeviceInfo device
-    cdef public double sample_rate
-    cdef public int input_channels, output_channels
+    cdef Stream stream
+    cdef readonly double _sample_rate
+    cdef readonly int _input_channels, _output_channels
     cdef public PaTime suggested_latency
     cdef readonly PaTime input_latency, output_latency
     cdef public bint clip_off, dither_off, never_drop_input, prime_out_buffer

@@ -51,12 +51,14 @@ cdef class DeviceInfo:
         return self._ptr.defaultSampleRate
     cdef void _get_info(self) except *:
         self._ptr = Pa_GetDeviceInfo(self.index)
-    cpdef Stream open_stream(self):
+    cpdef Stream _open_stream(self, dict kwargs):
         if self.active:
             return
-        self.stream = Stream(self)
+        self.stream = Stream(self, **kwargs)
         self.active = True
         return self.stream
+    def open_stream(self, **kwargs):
+        return self._open_stream(kwargs)
     cpdef close(self):
         """Close the device if active
         """
