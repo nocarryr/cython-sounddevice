@@ -154,7 +154,7 @@ cdef int _stream_callback(const void* in_bfr,
                           unsigned long frame_count,
                           const PaStreamCallbackTimeInfo* time_info,
                           PaStreamCallbackFlags status_flags,
-                          void* user_data) with gil:
+                          void* user_data) nogil:
     cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
     cdef SampleTime_s* start_time
     cdef int r
