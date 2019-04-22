@@ -247,7 +247,7 @@ cdef class SampleTime:
         t, t_offset = r
         cdef SampleTime obj = SampleTime(self.sample_rate, self.block_size)
 
-        t -= self.pa_time + t_offset
+        t = self.pa_time + t_offset - t
         obj.time_offset = self.time_offset
         obj.pa_time = t
         return obj
@@ -266,7 +266,7 @@ cdef class SampleTime:
             return NotImplemented
         t, t_offset = r
 
-        t -= self.pa_time + t_offset
+        t = self.pa_time + t_offset - t
         self.pa_time = t
         return self
     def _prepare_op(self, other):
