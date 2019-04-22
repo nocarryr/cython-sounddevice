@@ -27,6 +27,18 @@ cdef struct TestData_s:
 cdef TestData_s TestData
 
 cdef class Stream:
+    """A stream for audio input and output
+
+    Attributes:
+        device (DeviceInfo): The :class:`~cysounddevice.devices.DeviceInfo`
+            instance that created the stream
+        stream_info (StreamInfo): A :class:`StreamInfo` instance used to
+            configure stream parameters
+        callback_handler (StreamCallback): A :class:`StreamCallback` instance
+            to handle callbacks from PortAudio
+        frames_per_buffer (int): Number of samples per callback (block size)
+        active (bool): The stream state
+    """
     def __cinit__(self, DeviceInfo device, *args, **kwargs):
         self._frames_per_buffer = 512
         self.device = device
@@ -49,6 +61,11 @@ cdef class Stream:
         self._frames_per_buffer = value
 
     cpdef check(self):
+        """Check the stream configuration in PortAudio
+
+        Returns:
+            PaError: 0 on success, see `PaErrorCode`
+        """
         cdef PaError err = Pa_IsFormatSupported(
             &self.stream_info._pa_input_params,
             &self.stream_info._pa_output_params,
@@ -56,6 +73,11 @@ cdef class Stream:
         )
         return err
     cpdef open(self):
+        """Open the stream and begin audio processing
+
+        Note:
+            This method is a no-op if the stream is already active.
+        """
         if self.active:
             return
         cdef PaStream* ptr = self._pa_stream_ptr
@@ -92,6 +114,8 @@ cdef class Stream:
         # self.close()
         # self.device.close()
     cpdef close(self):
+        """Close the stream if active
+        """
         if not self.active:
             return
         # cdef PaStream* ptr = self._pa_stream_ptr
@@ -107,6 +131,17 @@ cdef class Stream:
         self.close()
 
 cdef class StreamInfo:
+    """Configuration parameters for :class:`Stream`
+
+    Attributes:
+        sample_format (SampleFormat): The sample format for the stream, see
+            `cysounddevice.types.SampleFormats`
+        sample_rate (int): Sample rate of the stream
+        input_channels (int): Number of channels to receive from the device.
+            Use ``0`` for output-only
+        output_channels (int): Number of channels to send to the device.
+            Use ``0`` for input-only
+    """
     def __cinit__(self, Stream stream, *args, **kwargs):
         cdef SampleFormat sf
         cdef DeviceInfo device = stream.device
@@ -234,6 +269,14 @@ cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
         sample_buffer_destroy(user_data.out_buffer)
 
 cdef class StreamCallback:
+    """Handler for PortAudio callbacks
+
+    Attributes:
+        stream (Stream): The :class:`Stream` that created the callback
+        sample_time (SampleTime): A :class:`cysounddevice.types.SampleTime`
+            instance to track timing from PortAudio
+        user_data: Pointer to a :any:`CallbackUserData` structure
+    """
     def __cinit__(self, Stream stream):
         self.stream = stream
         self._pa_callback_ptr = <PaStreamCallback*>_stream_callback

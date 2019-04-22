@@ -12,20 +12,6 @@ cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         Py_ssize_t length,
                                         Py_ssize_t nchannels,
                                         Py_ssize_t itemsize) except *:
-    """Create a :c:type:`SampleBuffer`
-
-    Allocates memory for :c:type:`BufferItem` members
-
-    Arguments:
-        start_time (SampleTime): :c:type:`SampleTime` describing time and block size
-        length (Py_ssize_t): Number of :c:type:`BufferItem` members to create
-        nchannels (Py_ssize_t): Number of channels (interleaved) in the stream
-        itemsize (Py_ssize_t): Size (in bytes) per sample
-
-    Returns:
-        SampleBuffer*: A pointer to the :c:type:`SampleBuffer`
-
-    """
     cdef SampleBuffer* bfr = <SampleBuffer*>malloc(sizeof(SampleBuffer))
     cdef Py_ssize_t item_length = start_time.block_size
     cdef Py_ssize_t bfr_length = itemsize * item_length * nchannels
@@ -64,8 +50,6 @@ cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
     return bfr
 
 cdef void sample_buffer_destroy(SampleBuffer* bfr) except *:
-    """Deallocates a :c:type:`SampleBuffer` and all of its members
-    """
     cdef Py_ssize_t i
     cdef BufferItem* item
 
@@ -87,21 +71,6 @@ cdef void _sample_buffer_write_advance(SampleBuffer* bfr) nogil:
         bfr.read_available += 1
 
 cdef int sample_buffer_write(SampleBuffer* bfr, const void *data, Py_ssize_t length) nogil:
-    """Copy stream data to the :c:type:`SampleBuffer`
-
-    Data is writen to the next available :c:type:`BufferItem`. If none are
-    available (the buffer is full), no data is copied.
-
-    Arguments:
-        bfr (SampleBuffer*): A pointer to the :c:type:`SampleBuffer`
-        data (const void *): A void pointer to the source data buffer
-        length (Py_ssize_t): Number of samples (should match the block size of the
-            :c:member:`SampleBuffer.start_time`)
-
-    Returns:
-        int: 1 on success
-
-    """
     if bfr.write_available <= 0:
         return 0
     cdef BufferItem* item = &bfr.items[bfr.write_index]
@@ -123,18 +92,6 @@ cdef void _sample_buffer_read_advance(SampleBuffer* bfr) nogil:
         bfr.write_available += 1
 
 cdef SampleTime_s* sample_buffer_read(SampleBuffer* bfr, char *data, Py_ssize_t length) nogil:
-    """Copy stream data from a :c:type:`SampleBuffer`
-
-    Arguments:
-        bfr (SampleBuffer*): A pointer to the :c:type:`SampleBuffer`
-        data (char *): A char pointer to copy data into
-        length (Py_ssize_t): Number of samples (should match the block size of the
-            :c:member:`SampleBuffer.start_time`)
-
-    Returns:
-        SampleTime*: Pointer to the :c:member:`BufferItem.start_time` describing
-            the source timing of the data. If no data is available, returns ``NULL``.
-    """
     if bfr.read_available <= 0:
         return NULL
     cdef BufferItem* item = &bfr.items[bfr.read_index]
@@ -148,23 +105,6 @@ cdef SampleTime_s* sample_buffer_read(SampleBuffer* bfr, char *data, Py_ssize_t 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) except *:
-    """Copy stream data from a :c:type:`SampleBuffer` into a ``float`` array
-
-    Deinterleaves the stream and casts it to 32-bit float. A typed memoryview
-    may be used.
-
-    The sample format must be :any:`paFloat32`.
-
-    Arguments:
-        bfr (SampleBuffer*): A pointer to the :c:type:`SampleBuffer`
-        data: A 2-dimensional array of float32 to copy into. The shape must match
-            the block_size and channel layout of the SampleBuffer
-            ``(nchannels, block_size)``
-
-    Returns:
-        SampleTime*: Pointer to the :c:member:`BufferItem.start_time` describing
-            the source timing of the data. If no data is available, returns ``NULL``.
-    """
     if bfr.read_available <= 0:
         return NULL
     cdef Py_ssize_t nchannels = data.shape[0]

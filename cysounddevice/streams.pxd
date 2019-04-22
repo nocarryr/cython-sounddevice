@@ -40,7 +40,7 @@ cdef class StreamInfo:
 cdef class StreamCallback:
     cdef PaStreamCallbackFlags _pa_flags
     cdef PaStreamCallback* _pa_callback_ptr
-    cdef Stream stream
+    cdef readonly Stream stream
     cdef CallbackUserData* user_data
     cdef readonly SampleTime sample_time
     cdef public bint input_underflow, input_overflow

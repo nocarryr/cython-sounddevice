@@ -60,6 +60,68 @@ cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) 
     ptr_to.block_index = ptr_from.block_index
 
 cdef class SampleTime:
+    """Helper class to convert between samples and seconds
+
+    Can be used with arithmetic and comparison operators::
+
+        Fs = 48000
+        block_size = 512
+        sample_time = SampleTime(Fs, block_size)
+
+        # Set sample_index to 4800 (0.1 seconds)
+        # Its block should be `9` and the block_index should be `192`
+        sample_time.sample_index = 4800
+
+        print(sample_time)
+        # >>> (9, 192)
+        print(sample_time.pa_time)
+        # >>> 0.1
+
+        # Set it to 0.2 seconds. Now the sample_index should be 9600.
+        # block should be 18 and block_index should be 384
+        sample_time.pa_time = 0.2
+
+        print(sample_time.sample_index)
+        # >>> 9600
+        print(sample_time)
+        # >>> (18, 384)
+
+        # Subtract in-place by 0.1 (seconds), then the values should match above
+        sample_time -= 0.1
+
+        print(sample_time.sample_index)
+        # >>> 4800
+
+        # Add 0.1 seconds. This returns a new instance.
+        sample_time2 = sample_time + 0.1
+
+        print(sample_time.sample_index)
+        # >>> 9600
+
+        # Now add the two together
+        sample_time3 = sample_time + sample_time2
+
+        print(sample_time3.pa_time)
+        # >>> 0.3
+        print(sample_time3.sample_index)
+        # >>> 14400
+
+        sample_time < sample_time2 < sample_time3
+        # >>> True
+
+    Attributes:
+        data (SampleTime_s): A :c:type:`SampleTime_s` struct
+        sample_rate (int): The sample rate
+        block_size (int): Number of samples per block
+        pa_time (float): Time in seconds
+        time_offset (float): Time in seconds to offset calculations to/from
+            sample counts
+        block (int): Number of blocks
+        block_index (int): The sample-based index within the current :attr:`block`,
+            starting from ``0`` to ``block_size - 1``
+        sample_index (int): Overall sample index calculated from :attr:`block`
+            and :attr:`block_index` as ``block * block_size + block_index``
+    """
     def __cinit__(self, SAMPLE_RATE_t sample_rate, Py_ssize_t block_size):
         self.data.sample_rate = sample_rate
         self.data.block_size = block_size

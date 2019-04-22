@@ -11,10 +11,15 @@ cdef class DeviceInfo:
     """Container for information about particular device
 
     Attributes:
-        index(int): The internal index of the device used by PortAudio
-        host_api: The :class:`HostApiInfo` instance the device belongs to
-        active(bool): The device state
-
+        index (int): The internal index of the device used by PortAudio
+        name (str): The device name
+        host_api (HostApiInfo): The :class:`HostApiInfo` instance the device belongs to
+        host_api_index (int): Internal index used by PortAudio to identify the
+            associated HostApi
+        num_inputs (int): Number of input channels
+        num_outputs (int): Number of output channels
+        default_sample_rate (int): Default sample rate
+        active (bool): The device state
     """
     def __cinit__(self, PaDeviceIndex index_):
         self.index = index_
@@ -24,30 +29,20 @@ cdef class DeviceInfo:
         self._get_info()
     @property
     def host_api_index(self):
-        """Internal index used by PortAudio to identify the associated HostApi
-        """
         return self._ptr.hostApi
     @property
     def name(self):
-        """The device name
-        """
         cdef bytes bname = self._ptr.name
         cdef str name = bname.decode('UTF-8')
         return name
     @property
     def num_inputs(self):
-        """Number of input channels
-        """
         return self._ptr.maxInputChannels
     @property
     def num_outputs(self):
-        """Number of output channels
-        """
         return self._ptr.maxOutputChannels
     @property
     def default_sample_rate(self):
-        """Default sample rate
-        """
         return self._ptr.defaultSampleRate
     cdef void _get_info(self) except *:
         self._ptr = Pa_GetDeviceInfo(self.index)
@@ -79,12 +74,13 @@ cdef class HostApiInfo:
     """Container for information about a particular HostApi
 
     Attributes:
-        index(int): The internal index of the HostApi reported by PortAudio
-        default_input: If the system default input uses this HostApi,
+        index (int): The internal index of the HostApi reported by PortAudio
+        name (str): The HostApi name
+        device_count (int): Number of devices associated with this HostApi
+        default_input (DeviceInfo): If the system default input uses this HostApi,
             the relevant :class:`~DeviceInfo` instance, otherwise ``None``.
-        default_input: If the system default output uses this HostApi,
+        default_input (DeviceInfo): If the system default output uses this HostApi,
             the relevant :class:`~DeviceInfo` instance, otherwise ``None``.
-
     """
     def __cinit__(self, PaHostApiIndex index_):
         self.index = index_
@@ -95,23 +91,16 @@ cdef class HostApiInfo:
         self._get_info()
     @property
     def name(self):
-        """The HostApi name
-        """
         cdef bytes bname = self._ptr.name
         cdef str name = bname.decode('UTF-8')
         return name
     @property
     def device_count(self):
-        """Number of devices associated with this HostApi
-        """
         assert self._ptr.deviceCount >= 0
         cdef Py_ssize_t count = self._ptr.deviceCount
         return count
     cpdef DeviceInfo get_device_by_name(self, str name):
         """Get a device by name
-
-        Returns:
-            :class:`DeviceInfo` instance
         """
         return self.devices_by_name[name]
     cdef void _get_info(self) except *:
@@ -141,9 +130,10 @@ cdef class PortAudio:
     :class:`~DeviceInfo` instances.
 
     Attributes:
-        default_input: The :class:`~DeviceInfo` instance for the default input
-        default_output: The :class:`~DeviceInfo` instance for the default output
-
+        device_count (int): Total number of devices detected
+        host_api_count (int): Number of HostApi's detected
+        default_input (DeviceInfo): The :class:`~DeviceInfo` instance for the default input
+        default_output (DeviceInfo): The :class:`~DeviceInfo` instance for the default output
     """
     def __cinit__(self):
         self.devices_by_paindex = {}
@@ -156,7 +146,8 @@ cdef class PortAudio:
     cpdef open(self):
         """Initialize the PortAudio library and gather HostApi and Device info
 
-        This method is a no-op if called more than once.
+        Note:
+            This method is a no-op if called more than once.
         """
         if self._initialized:
             return
@@ -166,7 +157,8 @@ cdef class PortAudio:
     cpdef close(self):
         """Close all streams and terminates the PortAudio library
 
-        This method is a no-op if not open.
+        Note:
+            This method is a no-op if not open.
         """
         if not self._initialized:
             return
@@ -191,37 +183,24 @@ cdef class PortAudio:
             yield device
     cpdef DeviceInfo get_device_by_name(self, str name):
         """Get a device by name
-
-        Returns:
-            :class:`DeviceInfo` instance
         """
         return self.devices_by_name[name]
-    cpdef DeviceInfo get_device_by_index(self, PaDeviceIndex i):
+    cpdef DeviceInfo get_device_by_index(self, PaDeviceIndex idx):
         """Get a device by its PortAudio index
-
-        Returns:
-            :class:`DeviceInfo` instance
         """
-        return self.devices_by_paindex[i]
+        return self.devices_by_paindex[idx]
     cpdef HostApiInfo get_host_api_by_name(self, str name):
         """Get a HostApi by name
-
-        Returns:
-            :class:`HostApiInfo` instance
         """
         return self.host_apis_by_name[name]
     @property
     def host_api_count(self):
-        """Number of HostApi's detected
-        """
         cdef PaDeviceIndex pacount = Pa_GetHostApiCount()
         assert pacount >= 0
         cdef Py_ssize_t count = pacount
         return count
     @property
     def device_count(self):
-        """Total number of devices detected
-        """
         cdef PaDeviceIndex pacount = Pa_GetDeviceCount()
         assert pacount >= 0
         cdef Py_ssize_t count = pacount
