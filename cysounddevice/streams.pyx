@@ -66,9 +66,11 @@ cdef class Stream:
         Returns:
             PaError: 0 on success, see `PaErrorCode`
         """
+        cdef PaStreamParameters* pa_input_params = self.stream_info.get_input_params()
+        cdef PaStreamParameters* pa_output_params = self.stream_info.get_output_params()
         cdef PaError err = Pa_IsFormatSupported(
-            &self.stream_info._pa_input_params,
-            &self.stream_info._pa_output_params,
+            pa_input_params,
+            pa_output_params,
             self.stream_info.sample_rate,
         )
         return err
@@ -82,14 +84,17 @@ cdef class Stream:
             return
         cdef PaStream* ptr = self._pa_stream_ptr
         cdef PaError sample_size = Pa_GetSampleSize(self.stream_info.sample_format.pa_ident)
+        cdef PaStreamParameters* pa_input_params = self.stream_info.get_input_params()
+        cdef PaStreamParameters* pa_output_params = self.stream_info.get_output_params()
+
         print('sample_size={}, should be {} bits'.format(
             sample_size, self.stream_info.sample_format.bit_width,
         ))
         self.callback_handler._build_user_data()
         handle_error(Pa_OpenStream(
             &ptr,
-            &self.stream_info._pa_input_params,
-            &self.stream_info._pa_output_params,
+            pa_input_params,
+            pa_output_params,
             self.stream_info.sample_rate,
             self.frames_per_buffer,
             self.stream_info._pa_flags,
@@ -206,6 +211,16 @@ cdef class StreamInfo:
             return
         self._sample_rate = value
         self._update_pa_data()
+    cdef PaStreamParameters* get_input_params(self):
+        if self._input_channels > 0:
+            return &self._pa_input_params
+        else:
+            return NULL
+    cdef PaStreamParameters* get_output_params(self):
+        if self._output_channels > 0:
+            return &self._pa_output_params
+        else:
+            return NULL
     cdef void _update_pa_data(self) except *:
         self._pa_input_params.device = self.device.index
         self._pa_input_params.channelCount = self.input_channels

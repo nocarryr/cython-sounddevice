@@ -36,6 +36,8 @@ cdef class StreamInfo:
     cdef public bint clip_off, dither_off, never_drop_input, prime_out_buffer
 
     cdef void _set_sample_format(self, str name, dict kwargs) except *
+    cdef PaStreamParameters* get_input_params(self)
+    cdef PaStreamParameters* get_output_params(self)
     cdef void _update_pa_data(self) except *
 
 cdef class StreamCallback:
