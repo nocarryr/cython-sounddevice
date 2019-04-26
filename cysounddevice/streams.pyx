@@ -134,6 +134,10 @@ cdef class Stream:
         return self
     def __exit__(self, *args):
         self.close()
+    def __repr__(self):
+        return '<{self.__class__.__name__} object for "{self.device.name}": {self}>'.format(self=self)
+    def __str__(self):
+        return '{self.stream_info}, block_size={self.frames_per_buffer}'.format(self=self)
 
 cdef class StreamInfo:
     """Configuration parameters for :class:`Stream`
@@ -243,7 +247,11 @@ cdef class StreamInfo:
         if self.prime_out_buffer:
             flags |= 8
         self._pa_flags = flags
-
+    def __repr__(self):
+        return '<{self.__class__.__name__}: ({self})>'.format(self=self)
+    def __str__(self):
+        s = '{self.input_channels} ins, {self.output_channels} outs, rs={self.sample_rate}'.format(self=self)
+        return s
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
