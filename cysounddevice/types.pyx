@@ -59,6 +59,35 @@ cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) 
     ptr_to.block = ptr_from.block
     ptr_to.block_index = ptr_from.block_index
 
+cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil:
+    cdef SAMPLE_INDEX_t r = st.block * st.block_size
+    r += st.block_index
+    return r
+
+@cython.cdivision(True)
+cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil:
+    cdef SAMPLE_INDEX_t sidx = SampleTime_to_sample_index(st)
+    cdef PaTime t = sidx / st.sample_rate
+    t += st.time_offset
+    return t
+
+@cython.cdivision(True)
+cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint allow_misaligned) nogil:
+    cdef Py_ssize_t block_index = idx % st.block_size
+    if not allow_misaligned and block_index != 0:
+        return False
+    st.block = idx // st.block_size
+    st.block_index = block_index
+    st.pa_time = SampleTime_to_pa_time(st)
+    return True
+
+@cython.cdivision(True)
+cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil:
+    t = t - st.time_offset
+    cdef SAMPLE_INDEX_t sample_index = llrint(t * st.sample_rate)
+    return SampleTime_set_sample_index(st, sample_index, allow_misaligned)
+
+
 cdef class SampleTime:
     """Helper class to convert between samples and seconds
 
@@ -141,10 +170,7 @@ cdef class SampleTime:
         return obj
 
     cpdef SampleTime copy(self):
-        cdef SampleTime obj = SampleTime(self.sample_rate, self.block_size)
-        obj.time_offset = self.time_offset
-        obj.block = self.block
-        obj.block_index = self.block_index
+        cdef SampleTime obj = SampleTime.from_struct(&self.data)
         return obj
 
     @property
@@ -164,10 +190,7 @@ cdef class SampleTime:
     cdef void _set_pa_time(self, PaTime value) except *:
         if self.data.pa_time == value:
             return
-        self.data.pa_time = value
-        cdef PaTime t = self.data.pa_time - self.data.time_offset
-        cdef SAMPLE_INDEX_t sample_index = llrint(t * self.sample_rate)
-        self._set_sample_index(sample_index)
+        SampleTime_set_pa_time(&self.data, value, True)
 
     @property
     def time_offset(self):
@@ -189,7 +212,7 @@ cdef class SampleTime:
             return
 
         self.data.block = value
-        self._update_time_vars()
+        self.data.pa_time = SampleTime_to_pa_time(&self.data)
 
     @property
     def block_index(self):
@@ -201,7 +224,7 @@ cdef class SampleTime:
         if value == self.data.block_index:
             return
         self.data.block_index = value
-        self._update_time_vars()
+        self.data.pa_time = SampleTime_to_pa_time(&self.data)
 
     @property
     def sample_index(self):
@@ -210,24 +233,12 @@ cdef class SampleTime:
     def sample_index(self, SAMPLE_INDEX_t value):
         self._set_sample_index(value)
     cdef SAMPLE_INDEX_t _get_sample_index(self):
-        cdef SAMPLE_INDEX_t r = self.data.block * self.data.block_size
-        r += self.data.block_index
-        return r
+        return SampleTime_to_sample_index(&self.data)
     @cython.cdivision(True)
     cdef void _set_sample_index(self, SAMPLE_INDEX_t value) except *:
         if value == self._get_sample_index():
             return
-        cdef Py_ssize_t block_size = self.data.block_size
-        self.data.block = value // self.data.block_size
-        self.data.block_index = value % self.data.block_size
-        self._update_time_vars()
-
-    @cython.cdivision(True)
-    cdef void _update_time_vars(self) except *:
-        cdef SAMPLE_INDEX_t sample_index = self._get_sample_index()
-        cdef PaTime t = sample_index / self.data.sample_rate
-        t += self.data.time_offset
-        self.data.pa_time = t
+        SampleTime_set_sample_index(&self.data, value, True)
 
     def __add__(SampleTime self, other):
         r = self._prepare_op(other)

@@ -67,6 +67,10 @@ cdef struct SampleTime_s:
     # SAMPLE_INDEX_t sample_index
 
 cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *
+cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil
+cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil
+cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint allow_misaligned) nogil
+cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 
 cdef class SampleTime:
     cdef SampleTime_s data
@@ -81,4 +85,3 @@ cdef class SampleTime:
     cdef void _set_block_index(self, Py_ssize_t value) except *
     cdef SAMPLE_INDEX_t _get_sample_index(self)
     cdef void _set_sample_index(self, SAMPLE_INDEX_t value) except *
-    cdef void _update_time_vars(self) except *
