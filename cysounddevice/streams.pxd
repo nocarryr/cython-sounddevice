@@ -17,9 +17,10 @@ cdef class Stream:
     cdef readonly StreamCallback callback_handler
     cdef PaStream* _pa_stream_ptr
     cdef unsigned long _frames_per_buffer
-    cdef readonly bint active
+    cdef readonly bint starting
 
     cpdef check(self)
+    cpdef check_active(self)
     cpdef open(self)
     cpdef close(self)
 
@@ -50,4 +51,5 @@ cdef class StreamCallback:
     cdef public bint output_underflow, output_overflow, priming_output
 
     cdef void _build_user_data(self, Py_ssize_t buffer_len=*) except *
+    cdef void _free_user_data(self) except *
     cdef void _update_pa_data(self) except *

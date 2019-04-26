@@ -44,7 +44,7 @@ cdef class Stream:
         self.device = device
         self.stream_info = StreamInfo(self, **kwargs)
         self.callback_handler = StreamCallback(self)
-        self.active = False
+        self.starting = False
     def __init__(self, *args, **kwargs):
         keys = ['frames_per_buffer']
         for key in keys:
@@ -59,6 +59,13 @@ cdef class Stream:
         if self.active:
             return
         self._frames_per_buffer = value
+    @property
+    def active(self):
+        if self.check_active():
+            return True
+        if self.starting:
+            return True
+        return False
 
     cpdef check(self):
         """Check the stream configuration in PortAudio
@@ -73,7 +80,25 @@ cdef class Stream:
             pa_output_params,
             self.stream_info.sample_rate,
         )
+        if err != 0:
+            handle_error(err)
         return err
+    cpdef check_active(self):
+        cdef PaError err
+        cdef bint active = False
+
+        if self._pa_stream_ptr != NULL:
+            err = Pa_IsStreamActive(self._pa_stream_ptr)
+            if err == 1:
+                active = True
+            elif err == 0:
+                active = False
+            elif err == paBadStreamPtr:
+                active = False
+                self._pa_stream_ptr = NULL
+            else:
+                handle_error(err)
+        return active
     cpdef open(self):
         """Open the stream and begin audio processing
 
@@ -102,7 +127,7 @@ cdef class Stream:
             # &TestData,
             <void*>self.callback_handler.user_data,
         ))
-        self.active = True
+        self.starting = True
         cdef const PaStreamInfo* info = Pa_GetStreamInfo(ptr)
         if info == NULL:
             raise Exception('Could not get stream info')
@@ -124,10 +149,11 @@ cdef class Stream:
         if not self.active:
             return
         # cdef PaStream* ptr = self._pa_stream_ptr
-        self.active = False
+        self.starting = False
         # handle_error(Pa_StopStream(self._pa_stream_ptr))
         # print('stopped')
         handle_error(Pa_CloseStream(self._pa_stream_ptr))
+        self.callback_handler._free_user_data()
         print('closed')
     def __enter__(self):
         self.open()
@@ -286,8 +312,10 @@ cdef int _stream_callback(const void* in_bfr,
 cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
     if user_data.in_buffer != NULL:
         sample_buffer_destroy(user_data.in_buffer)
+        user_data.in_buffer = NULL
     if user_data.out_buffer != NULL:
         sample_buffer_destroy(user_data.out_buffer)
+        user_data.out_buffer = NULL
 
 cdef class StreamCallback:
     """Handler for PortAudio callbacks
@@ -333,11 +361,22 @@ cdef class StreamCallback:
         ))
         if in_chan > 0:
             user_data.in_buffer = sample_buffer_create(self.sample_time.data, buffer_len, in_chan, itemsize)
+        else:
+            user_data.in_buffer = NULL
         if out_chan > 0:
             user_data.out_buffer = sample_buffer_create(self.sample_time.data, buffer_len, out_chan, itemsize)
+        else:
+            user_data.out_buffer = NULL
         user_data.input_channels = in_chan
         user_data.output_channels = out_chan
         self.user_data = user_data
+    cdef void _free_user_data(self) except *:
+        cdef CallbackUserData* user_data
+        if self.user_data:
+            user_data = self.user_data
+            self.user_data = NULL
+            callback_user_data_destroy(user_data)
+            PyMem_Free(user_data)
 
     cdef void _update_pa_data(self) except *:
         cdef PaStreamCallbackFlags flags = 0
