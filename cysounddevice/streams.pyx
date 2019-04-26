@@ -143,35 +143,33 @@ cdef class StreamInfo:
             Use ``0`` for input-only
     """
     def __cinit__(self, Stream stream, *args, **kwargs):
-        cdef SampleFormat sf
         cdef DeviceInfo device = stream.device
-        sf.pa_ident = 1
-        sf.bit_width = 32
-        sf.is_float = True
-        sf.is_signed = True
-        sf.is_24bit = False
-        self.sample_format = sf
         self.stream = stream
         self._input_channels = device.num_inputs
         self._output_channels = device.num_outputs
         self._sample_rate = device.default_sample_rate
-        # self.sample_format = SampleFormats.sf_float32
-        print('sample_format: ident={}, bit_width={}, signed={}, is_float={}'.format(
-            self.sample_format.pa_ident, self.sample_format.bit_width,
-            self.sample_format.is_signed, self.sample_format.is_float,
-        ))
         self.suggested_latency = device._ptr.defaultHighInputLatency
         self.input_latency = 0
         self.output_latency = 0
         self._pa_input_params.device = device.index
         self._pa_output_params.device = device.index
     def __init__(self, *args, **kwargs):
+        cdef str sf_name = kwargs.get('sample_format', '')
+        self._set_sample_format(sf_name, kwargs)
+
         keys = ['input_channels', 'output_channels', 'sample_rate']
         for key in keys:
             if key in kwargs:
                 val = kwargs[key]
                 setattr(self, key, val)
         self._update_pa_data()
+    cdef void _set_sample_format(self, str name, dict kwargs) except *:
+        cdef SampleFormat* sf
+        if len(name):
+            sf = get_sample_format_by_name(name)
+        else:
+            sf = get_sample_format_by_kwargs(kwargs)
+        self.sample_format = sf
     @property
     def device(self):
         return self.stream.device

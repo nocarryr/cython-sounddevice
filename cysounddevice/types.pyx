@@ -14,6 +14,7 @@ SampleFormats.sf_float32.bit_width = 32
 SampleFormats.sf_float32.is_signed = True
 SampleFormats.sf_float32.is_float = True
 SampleFormats.sf_float32.is_24bit = False
+SampleFormats.sf_float32.name = b'float32'
 # SampleFormats.sf_float32.dtype_ptr = <void*>FLOAT32_DTYPE_t
 
 SampleFormats.sf_int32.pa_ident = 2
@@ -21,6 +22,7 @@ SampleFormats.sf_int32.bit_width = 32
 SampleFormats.sf_int32.is_signed = True
 SampleFormats.sf_int32.is_float = False
 SampleFormats.sf_int32.is_24bit = False
+SampleFormats.sf_int32.name = b'int32'
 # SampleFormats.sf_int32.dtype_ptr = <void*>INT32_DTYPE_t
 
 SampleFormats.sf_int24.pa_ident = 4
@@ -28,6 +30,7 @@ SampleFormats.sf_int24.bit_width = 24
 SampleFormats.sf_int24.is_signed = True
 SampleFormats.sf_int24.is_float = False
 SampleFormats.sf_int24.is_24bit = True
+SampleFormats.sf_int24.name = b'int24'
 # SampleFormats.sf_int24.dtype_ptr = <void*>INT24_DTYPE_t
 
 SampleFormats.sf_int16.pa_ident = 8
@@ -35,6 +38,7 @@ SampleFormats.sf_int16.bit_width = 16
 SampleFormats.sf_int16.is_signed = True
 SampleFormats.sf_int16.is_float = False
 SampleFormats.sf_int16.is_24bit = False
+SampleFormats.sf_int16.name = b'int16'
 # SampleFormats.sf_int16.dtype_ptr = <void*>INT16_DTYPE_t
 
 SampleFormats.sf_int8.pa_ident = 16
@@ -42,6 +46,7 @@ SampleFormats.sf_int8.bit_width = 8
 SampleFormats.sf_int8.is_signed = True
 SampleFormats.sf_int8.is_float = False
 SampleFormats.sf_int8.is_24bit = False
+SampleFormats.sf_int8.name = b'int8'
 # SampleFormats.sf_int8.dtype_ptr = <void*>INT8_DTYPE_t
 
 SampleFormats.sf_uint8.pa_ident = 32
@@ -49,7 +54,74 @@ SampleFormats.sf_uint8.bit_width = 8
 SampleFormats.sf_uint8.is_signed = False
 SampleFormats.sf_uint8.is_float = False
 SampleFormats.sf_uint8.is_24bit = False
+SampleFormats.sf_uint8.name = b'uint8'
 # SampleFormats.sf_uint8.dtype_ptr = <void*>UINT8_DTYPE_t
+
+cdef dict sample_format_to_dict(SampleFormat* sf):
+    cdef dict d = {}
+    cdef bytes bname = bytes(sf.name)
+    cdef str name = bname.decode('UTF-8')
+    d['pa_ident'] = sf.pa_ident
+    d['bit_width'] = sf.bit_width
+    d['is_signed'] = sf.is_signed
+    d['is_float'] = sf.is_float
+    d['is_24bit'] = sf.is_24bit
+    d['name'] = name
+    return d
+
+cdef SampleFormat* get_sample_format_by_name(str name) except *:
+    cdef SampleFormat* sf
+    if 'float32' in name:
+        return &SampleFormats.sf_float32
+    elif 'int32' in name:
+        return &SampleFormats.sf_int32
+    elif 'int16' in name:
+        return &SampleFormats.sf_int16
+    elif 'uint8' in name:
+        return &SampleFormats.sf_uint8
+    elif 'int8' in name:
+        return &SampleFormats.sf_int8
+    else:
+        raise Exception('Invalid SampleFormat name')
+
+cdef SampleFormat* get_sample_format(Py_ssize_t bit_width, bint is_signed, bint is_float) except *:
+    if is_float:
+        if bit_width == 32:
+            return &SampleFormats.sf_float32
+        else:
+            raise Exception('Float only supported in 32-bit')
+    if not is_signed:
+        if bit_width == 8:
+            return &SampleFormats.sf_uint8
+        else:
+            raise Exception('Unsigned only supported in 8-bit')
+    if bit_width == 32:
+        return &SampleFormats.sf_int32
+    elif bit_width == 24:
+        return &SampleFormats.sf_int24
+    elif bit_width == 16:
+        return &SampleFormats.sf_int16
+    elif bit_width == 8:
+        return &SampleFormats.sf_int8
+    else:
+        raise Exception('Unsupported format')
+
+cdef SampleFormat* get_sample_format_by_kwargs(dict kwargs) except *:
+    cdef Py_ssize_t bit_width = kwargs.get('bit_width', 0)
+    cdef bint is_signed = kwargs.get('is_signed', True)
+    cdef bint is_float = kwargs.get('is_float', False)
+
+    return get_sample_format(bit_width, is_signed, is_float)
+
+def get_sample_formats():
+    d = {}
+    d['sf_float32'] = sample_format_to_dict(&SampleFormats.sf_float32)
+    d['sf_int32'] = sample_format_to_dict(&SampleFormats.sf_int32)
+    d['sf_int24'] = sample_format_to_dict(&SampleFormats.sf_int24)
+    d['sf_int16'] = sample_format_to_dict(&SampleFormats.sf_int16)
+    d['sf_int8'] = sample_format_to_dict(&SampleFormats.sf_int8)
+    d['sf_uint8'] = sample_format_to_dict(&SampleFormats.sf_uint8)
+    return d
 
 cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *:
     ptr_to.pa_time = ptr_from.pa_time

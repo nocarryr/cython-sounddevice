@@ -24,7 +24,7 @@ cdef class Stream:
     cpdef close(self)
 
 cdef class StreamInfo:
-    cdef SampleFormat sample_format
+    cdef SampleFormat* sample_format
     cdef PaStreamParameters _pa_input_params
     cdef PaStreamParameters _pa_output_params
     cdef PaStreamFlags _pa_flags
@@ -35,6 +35,7 @@ cdef class StreamInfo:
     cdef readonly PaTime input_latency, output_latency
     cdef public bint clip_off, dither_off, never_drop_input, prime_out_buffer
 
+    cdef void _set_sample_format(self, str name, dict kwargs) except *
     cdef void _update_pa_data(self) except *
 
 cdef class StreamCallback:

@@ -41,8 +41,9 @@ cdef struct SampleFormat:
     bint is_float
     bint is_24bit
     void* dtype_ptr
+    char* name
 
-ctypedef union SampleFormats_u:
+ctypedef struct SampleFormats_s:
     SampleFormat sf_float32
     SampleFormat sf_int32
     SampleFormat sf_int24
@@ -50,7 +51,12 @@ ctypedef union SampleFormats_u:
     SampleFormat sf_int8
     SampleFormat sf_uint8
 
-cdef SampleFormats_u SampleFormats
+cdef SampleFormats_s SampleFormats
+
+cdef dict sample_format_to_dict(SampleFormat* sf)
+cdef SampleFormat* get_sample_format_by_name(str name) except *
+cdef SampleFormat* get_sample_format(Py_ssize_t bit_width, bint is_signed, bint is_float) except *
+cdef SampleFormat* get_sample_format_by_kwargs(dict kwargs) except *
 
 ctypedef enum IOType:
     IOType_Input = 1
