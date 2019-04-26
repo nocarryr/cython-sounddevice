@@ -125,6 +125,7 @@ def get_sample_formats():
 
 cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *:
     ptr_to.pa_time = ptr_from.pa_time
+    ptr_to.rel_time = ptr_from.rel_time
     ptr_to.time_offset = ptr_from.time_offset
     ptr_to.sample_rate = ptr_from.sample_rate
     ptr_to.block_size = ptr_from.block_size
@@ -137,11 +138,14 @@ cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil:
     return r
 
 @cython.cdivision(True)
-cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil:
+cdef PaTime SampleTime_to_rel_time(SampleTime_s* st) nogil:
     cdef SAMPLE_INDEX_t sidx = SampleTime_to_sample_index(st)
     cdef PaTime t = sidx / st.sample_rate
-    t += st.time_offset
     return t
+
+cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil:
+    cdef PaTime t = SampleTime_to_rel_time(st)
+    return t + st.time_offset
 
 @cython.cdivision(True)
 cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint allow_misaligned) nogil:
@@ -150,15 +154,22 @@ cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint
         return False
     st.block = idx // st.block_size
     st.block_index = block_index
-    st.pa_time = SampleTime_to_pa_time(st)
+    st.rel_time = SampleTime_to_rel_time(st)
+    st.pa_time = st.rel_time + st.time_offset
     return True
 
 @cython.cdivision(True)
-cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil:
-    t = t - st.time_offset
+cdef bint SampleTime_set_rel_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil:
     cdef SAMPLE_INDEX_t sample_index = llrint(t * st.sample_rate)
     return SampleTime_set_sample_index(st, sample_index, allow_misaligned)
 
+cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil:
+    cdef PaTime rel_t = t - st.time_offset
+
+    cdef bint r = SampleTime_set_rel_time(st, rel_t, allow_misaligned)
+    if r:
+        st.pa_time = t
+    return r
 
 cdef class SampleTime:
     """Helper class to convert between samples and seconds
@@ -214,7 +225,8 @@ cdef class SampleTime:
         data (SampleTime_s): A :c:type:`SampleTime_s` struct
         sample_rate (int): The sample rate
         block_size (int): Number of samples per block
-        pa_time (float): Time in seconds
+        pa_time (float): Time in seconds (absolute)
+        rel_time (float): Time in seconds relative to :attr:`time_offset`
         time_offset (float): Time in seconds to offset calculations to/from
             sample counts
         block (int): Number of blocks
@@ -227,6 +239,7 @@ cdef class SampleTime:
         self.data.sample_rate = sample_rate
         self.data.block_size = block_size
         self.data.pa_time = 0
+        self.data.rel_time = 0
         self.data.time_offset = 0
         self.data.block = 0
         self.data.block_index = 0
@@ -254,10 +267,21 @@ cdef class SampleTime:
         return self.data.block_size
 
     @property
+    def rel_time(self):
+        return self.data.rel_time
+    @rel_time.setter
+    def rel_time(self, PaTime value):
+        self._set_rel_time(value)
+    cdef void _set_rel_time(self, PaTime value) except *:
+        if self.data.rel_time == value:
+            return
+        SampleTime_set_rel_time(&self.data, value, True)
+
+    @property
     def pa_time(self):
         return self.data.pa_time
     @pa_time.setter
-    def pa_time(self, value):
+    def pa_time(self, PaTime value):
         self._set_pa_time(value)
     cdef void _set_pa_time(self, PaTime value) except *:
         if self.data.pa_time == value:
@@ -268,7 +292,7 @@ cdef class SampleTime:
     def time_offset(self):
         return self.data.time_offset
     @time_offset.setter
-    def time_offset(self, value):
+    def time_offset(self, PaTime value):
         self._set_time_offset(value)
     cdef void _set_time_offset(self, PaTime value) except *:
         self.data.time_offset = value
@@ -284,19 +308,21 @@ cdef class SampleTime:
             return
 
         self.data.block = value
-        self.data.pa_time = SampleTime_to_pa_time(&self.data)
+        self.data.rel_time = SampleTime_to_rel_time(&self.data)
+        self.data.pa_time = self.data.rel_time + self.data.time_offset
 
     @property
     def block_index(self):
         return self.data.block_index
     @block_index.setter
-    def block_index(self, value):
+    def block_index(self, Py_ssize_t value):
         self._set_block_index(value)
     cdef void _set_block_index(self, Py_ssize_t value) except *:
         if value == self.data.block_index:
             return
         self.data.block_index = value
-        self.data.pa_time = SampleTime_to_pa_time(&self.data)
+        self.data.rel_time = SampleTime_to_rel_time(&self.data)
+        self.data.pa_time = self.data.rel_time + self.data.time_offset
 
     @property
     def sample_index(self):
@@ -316,62 +342,56 @@ cdef class SampleTime:
         r = self._prepare_op(other)
         if r is None:
             return NotImplemented
-        t, t_offset = r
-        cdef SampleTime obj = SampleTime(self.sample_rate, self.block_size)
-
-        t += self.pa_time + t_offset
-        obj.time_offset = self.time_offset
-        obj.pa_time = t
+        cdef PaTime t = r
+        cdef SampleTime obj = self.copy()
+        obj._set_rel_time(self.data.rel_time + t)
         return obj
     def __sub__(SampleTime self, other):
         r = self._prepare_op(other)
         if r is None:
             return NotImplemented
-        t, t_offset = r
-        cdef SampleTime obj = SampleTime(self.sample_rate, self.block_size)
-
-        t = self.pa_time + t_offset - t
-        obj.time_offset = self.time_offset
-        obj.pa_time = t
+        cdef PaTime t = r
+        cdef SampleTime obj = self.copy()
+        obj._set_rel_time(self.data.rel_time - t)
         return obj
     def __iadd__(SampleTime self, other):
         r = self._prepare_op(other)
         if r is None:
             return NotImplemented
-        t, t_offset = r
+        cdef PaTime t = r
 
-        t += self.pa_time + t_offset
-        self.pa_time = t
+        self._set_rel_time(self.data.rel_time + t)
         return self
     def __isub__(SampleTime self, other):
         r = self._prepare_op(other)
         if r is None:
             return NotImplemented
-        t, t_offset = r
+        cdef PaTime t = r
 
-        t = self.pa_time + t_offset - t
-        self.pa_time = t
+        self._set_rel_time(self.data.rel_time - t)
         return self
     def _prepare_op(self, other):
-        cdef PaTime t, t_offset
-        t_offset = self.time_offset
+        cdef PaTime t
+        cdef SampleTime oth_obj
         if isinstance(other, SampleTime):
-            t = other.pa_time
-            t_offset -= other.time_offset
+            oth_obj = other
+            t = oth_obj.data.rel_time
         elif isinstance(other, numbers.Number):
             t = other
         else:
             return None
-        return t, t_offset
+        return t
     def __richcmp__(SampleTime self, other, int op):
         cdef PaTime self_t, oth_t
+        cdef SampleTime oth_obj
         if isinstance(other, SampleTime):
-            oth_t = other.pa_time
+            oth_obj = other
+            oth_t = oth_obj.data.rel_time
         # elif isinstance(other, numbers.Number):
         #     oth_t = other
         else:
             return NotImplemented
-        self_t = self.pa_time
+        self_t = self.data.rel_time
         if op == Py_LT:
             return self_t < oth_t
         elif op == Py_EQ:

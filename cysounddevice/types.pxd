@@ -65,6 +65,7 @@ ctypedef enum IOType:
 
 cdef struct SampleTime_s:
     PaTime pa_time
+    PaTime rel_time
     PaTime time_offset
     SAMPLE_RATE_t sample_rate
     Py_ssize_t block_size
@@ -74,9 +75,12 @@ cdef struct SampleTime_s:
 
 cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *
 cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil
+# cdef PaTime SampleTime_get_rel_time(SampleTime_s* st) nogil
+cdef PaTime SampleTime_to_rel_time(SampleTime_s* st) nogil
 cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil
 cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint allow_misaligned) nogil
 cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
+cdef bint SampleTime_set_rel_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 
 cdef class SampleTime:
     cdef SampleTime_s data
@@ -85,6 +89,7 @@ cdef class SampleTime:
     cdef SampleTime from_struct(SampleTime_s* data)
 
     cpdef SampleTime copy(self)
+    cdef void _set_rel_time(self, PaTime value) except *
     cdef void _set_pa_time(self, PaTime value) except *
     cdef void _set_time_offset(self, PaTime value) except *
     cdef void _set_block(self, BLOCK_t value) except *
