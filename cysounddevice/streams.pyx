@@ -44,6 +44,8 @@ cdef class Stream:
         self.device = device
         self.stream_info = StreamInfo(self, **kwargs)
         self.callback_handler = StreamCallback(self)
+        self.input_buffer = StreamInputBuffer(self)
+        self.output_buffer = StreamOutputBuffer(self)
         self.starting = False
     def __init__(self, *args, **kwargs):
         keys = ['frames_per_buffer']
@@ -139,6 +141,7 @@ cdef class Stream:
             sample_size, self.stream_info.sample_format.bit_width,
         ))
         self.callback_handler._build_user_data()
+        cdef CallbackUserData* user_data = self.callback_handler.user_data
         handle_error(Pa_OpenStream(
             &ptr,
             pa_input_params,
@@ -148,8 +151,12 @@ cdef class Stream:
             self.stream_info._pa_flags,
             self.callback_handler._pa_callback_ptr,
             # &TestData,
-            <void*>self.callback_handler.user_data,
+            <void*>user_data,
         ))
+        if self.input_channels > 0:
+            self.input_buffer._set_sample_buffer(user_data.in_buffer)
+        if self.output_channels > 0:
+            self.output_buffer._set_sample_buffer(user_data.out_buffer)
         self.starting = True
         cdef const PaStreamInfo* info = Pa_GetStreamInfo(ptr)
         if info == NULL:

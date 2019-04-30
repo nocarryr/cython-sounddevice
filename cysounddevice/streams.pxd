@@ -18,6 +18,8 @@ cdef class Stream:
     cdef readonly DeviceInfo device
     cdef readonly StreamInfo stream_info
     cdef readonly StreamCallback callback_handler
+    cdef readonly StreamInputBuffer input_buffer
+    cdef readonly StreamOutputBuffer output_buffer
     cdef PaStream* _pa_stream_ptr
     cdef unsigned long _frames_per_buffer
     cdef readonly bint starting

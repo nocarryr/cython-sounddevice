@@ -179,3 +179,120 @@ cdef void copy_char_array(const char **src, char **dest, Py_ssize_t length) nogi
 
     for i in range(length):
         dest_p[i] = src_p[i]
+
+
+cdef class StreamBuffer:
+    def __cinit__(self, Stream stream):
+        self.stream = stream
+        self.sample_buffer = NULL
+        self.nchannels = 0
+        self.own_buffer = False
+    def __dealloc__(self):
+        if self.own_buffer:
+            if self.sample_buffer:
+                sample_buffer_destroy(self.sample_buffer)
+        self.sample_buffer = NULL
+
+    # cpdef _build_buffer(self, Py_ssize_t buffer_len, Py_ssize_t nchannels, Py_ssize_t itemsize):
+    #     assert self.sample_buffer == NULL
+    #
+    #     cdef SampleTime sample_time = SampleTime(self.sample_rate, self.block_size)
+    #
+    #     self.own_buffer = True
+    #     self.nchannels = nchannels
+    #
+    #     if nchannels > 0:
+    #         self.sample_buffer = sample_buffer_create(
+    #             sample_time.data, buffer_len, nchannels, itemsize,
+    #         )
+    #         if not self.sample_buffer:
+    #             raise MemoryError()
+    cdef void _set_sample_buffer(self, SampleBuffer* bfr) except *:
+        if self.sample_buffer:
+            if self.own_buffer:
+                sample_buffer_destroy(self.sample_buffer)
+            self.sample_buffer = NULL
+
+        self.own_buffer = False
+        self.sample_buffer = bfr
+        self.nchannels = bfr.nchannels
+
+cdef class StreamInputBuffer(StreamBuffer):
+    cpdef bint ready(self):
+        if self.sample_buffer == NULL:
+            return False
+        cdef SampleBuffer* bfr = self.sample_buffer
+        return bfr.read_available > 0
+
+    cpdef SampleTime read_into(self, float[:,:] data):
+        """Copy stream data from a :c:type:`SampleBuffer`
+
+        If the stream contains more than one channel, the samples will be deinterleaved
+        into shape (nchannels, length).
+
+        Note:
+            The sample format must be float32
+
+        Arguments:
+            data: A 2-dimensional float array (or memoryview) to copy data into
+
+        Returns:
+            SampleTime:  If no data is available, returns ``NULL``.
+        """
+        cdef SampleTime_s* item_st = self._read_into(data)
+        if item_st == NULL:
+            return None
+        cdef SampleTime sample_time = SampleTime.from_struct(item_st)
+        return sample_time
+
+    cdef SampleTime_s* _read_into(self, float[:,:] data) nogil:
+        if self.sample_buffer == NULL:
+            return NULL
+        cdef SampleTime_s* item_st = sample_buffer_read_sf32(self.sample_buffer, data)
+        return item_st
+
+    cdef SampleTime_s* _read_ptr(self, char *data) nogil:
+        if self.sample_buffer == NULL:
+            return NULL
+        cdef SampleBuffer* bfr = self.sample_buffer
+        return sample_buffer_read(bfr, data, bfr.item_length)
+
+cdef class StreamOutputBuffer(StreamBuffer):
+    cpdef bint ready(self):
+        if self.sample_buffer == NULL:
+            return False
+        cdef SampleBuffer* bfr = self.sample_buffer
+        return bfr.write_available > 0
+
+    cpdef int write_output_sf32(self, float[:,:] data):
+        """Copy stream data to the :c:type:`SampleBuffer`
+
+        Arguments:
+            data: A 2-dimensional float array (or memoryview) to copy data from
+
+        Returns:
+            int: 1 on success
+        """
+        return self._write_output_sf32(data)
+
+    cdef int _write_output_sf32(self, float[:,:] data) nogil:
+        if self.sample_buffer == NULL:
+            return 0
+        return sample_buffer_write_sf32(self.sample_buffer, data)
+
+    cdef int _write_output(self, const void *data) nogil:
+        """Copy stream data to the :c:type:`SampleBuffer`
+
+        Data is writen to the next available :c:type:`BufferItem`. If none are
+        available (the buffer is full), no data is copied.
+
+        Arguments:
+            data (const void *): A void pointer to the source data buffer
+
+        Returns:
+            int: 1 on success
+        """
+        if self.sample_buffer == NULL:
+            return 0
+        cdef SampleBuffer* bfr = self.sample_buffer
+        return sample_buffer_write(bfr, data, bfr.item_length)
