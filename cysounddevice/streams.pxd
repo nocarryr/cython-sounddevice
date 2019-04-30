@@ -10,6 +10,9 @@ cdef struct CallbackUserData:
     int output_channels
     SampleBuffer* in_buffer
     SampleBuffer* out_buffer
+    # SampleFormat* sample_format
+    PaTime firstInputAdcTime
+    PaTime firstOutputDacTime
 
 cdef class Stream:
     cdef readonly DeviceInfo device
@@ -19,6 +22,8 @@ cdef class Stream:
     cdef unsigned long _frames_per_buffer
     cdef readonly bint starting
 
+    cdef SampleFormat* _get_sample_format(self)
+    cdef CallbackUserData* _get_callback_data(self)
     cpdef check(self)
     cpdef check_active(self)
     cpdef open(self)

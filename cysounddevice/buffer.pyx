@@ -11,12 +11,14 @@ from cysounddevice.types cimport *
 cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         Py_ssize_t length,
                                         Py_ssize_t nchannels,
-                                        Py_ssize_t itemsize) except *:
+                                        SampleFormat* sample_format) except *:
     cdef SampleBuffer* bfr = <SampleBuffer*>malloc(sizeof(SampleBuffer))
     cdef Py_ssize_t item_length = start_time.block_size
+    cdef Py_ssize_t itemsize = sample_format.bit_width // 8
     cdef Py_ssize_t bfr_length = itemsize * item_length * nchannels
     if bfr == NULL:
         raise MemoryError()
+    copy_sample_time_struct(&start_time, &bfr.callback_time)
     bfr.length = length
     bfr.itemsize = itemsize
     bfr.item_length = item_length
@@ -26,6 +28,7 @@ cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
     bfr.read_available = 0
     bfr.current_block = start_time.block
     bfr.write_available = length
+    bfr.sample_format = sample_format
     bfr.items = <BufferItem *>malloc(sizeof(BufferItem) * length)
     if bfr.items == NULL:
         raise MemoryError()
@@ -82,6 +85,22 @@ cdef int sample_buffer_write(SampleBuffer* bfr, const void *data, Py_ssize_t len
     _sample_buffer_write_advance(bfr)
     return 1
 
+cdef int sample_buffer_write_from_callback(SampleBuffer* bfr,
+                                           const void *data,
+                                           Py_ssize_t length,
+                                           PaTime adcTime) nogil:
+    if bfr.write_available <= 0:
+        return 0
+    cdef BufferItem* item = &bfr.items[bfr.write_index]
+    if length != item.length:
+        return 0
+    item.start_time.time_offset = bfr.callback_time.time_offset
+    if not SampleTime_set_pa_time(&item.start_time, adcTime, True):
+        return 2
+    cdef const char *cdata = <char *>data
+    copy_char_array(&cdata, &item.bfr, item.total_size)
+    _sample_buffer_write_advance(bfr)
+    return 1
 cdef void _sample_buffer_read_advance(SampleBuffer* bfr) nogil:
     bfr.read_index += 1
     if bfr.read_index >= bfr.length:
@@ -96,6 +115,23 @@ cdef SampleTime_s* sample_buffer_read(SampleBuffer* bfr, char *data, Py_ssize_t 
         return NULL
     cdef BufferItem* item = &bfr.items[bfr.read_index]
     if length != item.length:
+        return NULL
+    cdef const char *item_bfr = item.bfr
+    copy_char_array(&item_bfr, &data, item.total_size)
+    _sample_buffer_read_advance(bfr)
+    return &item.start_time
+
+cdef SampleTime_s* sample_buffer_read_from_callback(SampleBuffer* bfr,
+                                                    char *data,
+                                                    Py_ssize_t length,
+                                                    PaTime dacTime) nogil:
+    if bfr.read_available <= 0:
+        return NULL
+    cdef BufferItem* item = &bfr.items[bfr.read_index]
+    if length != item.length:
+        return NULL
+    item.start_time.time_offset = bfr.callback_time.time_offset
+    if not SampleTime_set_pa_time(&item.start_time, dacTime, False):
         return NULL
     cdef const char *item_bfr = item.bfr
     copy_char_array(&item_bfr, &data, item.total_size)

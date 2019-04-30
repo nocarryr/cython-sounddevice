@@ -66,6 +66,29 @@ cdef class Stream:
         if self.starting:
             return True
         return False
+    @property
+    def input_channels(self): return self.stream_info.input_channels
+    @input_channels.setter
+    def input_channels(self, int value): self.stream_info.input_channels = value
+
+    @property
+    def output_channels(self): return self.stream_info.output_channels
+    @output_channels.setter
+    def output_channels(self, int value): self.stream_info.output_channels = value
+
+    @property
+    def sample_rate(self):
+        return self.stream_info.sample_rate
+    @sample_rate.setter
+    def sample_rate(self, double value): self.stream_info.sample_rate = value
+
+    cdef SampleFormat* _get_sample_format(self):
+        return self.stream_info.sample_format
+
+    cdef CallbackUserData* _get_callback_data(self):
+        if not self.active:
+            return NULL
+        return self.callback_handler.user_data
 
     cpdef check(self):
         """Check the stream configuration in PortAudio
@@ -78,7 +101,7 @@ cdef class Stream:
         cdef PaError err = Pa_IsFormatSupported(
             pa_input_params,
             pa_output_params,
-            self.stream_info.sample_rate,
+            self.sample_rate,
         )
         if err != 0:
             handle_error(err)
@@ -120,7 +143,7 @@ cdef class Stream:
             &ptr,
             pa_input_params,
             pa_output_params,
-            self.stream_info.sample_rate,
+            self.sample_rate,
             self.frames_per_buffer,
             self.stream_info._pa_flags,
             self.callback_handler._pa_callback_ptr,
@@ -131,7 +154,7 @@ cdef class Stream:
         cdef const PaStreamInfo* info = Pa_GetStreamInfo(ptr)
         if info == NULL:
             raise Exception('Could not get stream info')
-        self.stream_info.sample_rate = info.sampleRate
+        self.sample_rate = info.sampleRate
         self.stream_info.input_latency = info.inputLatency
         self.stream_info.output_latency = info.outputLatency
         self._pa_stream_ptr = ptr
@@ -289,21 +312,41 @@ cdef int _stream_callback(const void* in_bfr,
                           void* user_data) nogil:
     cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
     cdef SampleTime_s* start_time
+    cdef PaTime adcTime, dacTime
     cdef int r
     cdef unsigned long i, bfr_size
     cdef char *in_ptr = <char *>in_bfr
     cdef char *out_ptr = <char *>out_bfr
 
     if cb_data.input_channels > 0:
-        if cb_data.in_buffer.read_available > 0:
-            start_time = sample_buffer_read(cb_data.in_buffer, in_ptr, frame_count)
-            if start_time == NULL:
+        adcTime = time_info.inputBufferAdcTime
+        if cb_data.in_buffer.current_block == 0:
+            cb_data.firstInputAdcTime = adcTime
+            if cb_data.in_buffer != NULL:
+                cb_data.in_buffer.callback_time.time_offset = adcTime
+                SampleTime_set_pa_time(&cb_data.in_buffer.callback_time, adcTime, True)
+        if cb_data.in_buffer.write_available > 0:
+            r = sample_buffer_write_from_callback(cb_data.in_buffer, in_ptr, frame_count, adcTime)
+            if r != 1:
+                with gil:
+                    print('abort in in_buffer: adcTime={}, write_available={}, r={}'.format(
+                        adcTime, cb_data.in_buffer.write_available, r,
+                    ))
                 return paAbort
         cb_data.in_buffer.current_block += 1
     if cb_data.output_channels > 0:
-        if cb_data.out_buffer.write_available > 0:
-            r = sample_buffer_write(cb_data.out_buffer, out_ptr, frame_count)
-            if r != 1:
+        dacTime = time_info.outputBufferDacTime
+        if cb_data.out_buffer.current_block == 0:
+            cb_data.firstOutputDacTime = time_info.outputBufferDacTime
+            if cb_data.out_buffer != NULL:
+                cb_data.out_buffer.callback_time.time_offset = dacTime
+                SampleTime_set_pa_time(&cb_data.out_buffer.callback_time, dacTime, True)
+        cb_data.out_buffer.callback_time.pa_time = dacTime
+        if cb_data.out_buffer.read_available > 0:
+            start_time = sample_buffer_read_from_callback(cb_data.out_buffer, out_ptr, frame_count, dacTime)
+            if start_time == NULL:
+                with gil:
+                    print('abort in out_buffer')
                 return paAbort
         cb_data.out_buffer.current_block += 1
     return paContinue
@@ -335,7 +378,7 @@ cdef class StreamCallback:
         self.output_overflow = False
         self.priming_output = False
         self.user_data = NULL
-        self.sample_time = SampleTime(stream.stream_info.sample_rate, stream._frames_per_buffer)
+        self.sample_time = SampleTime(stream.sample_rate, stream._frames_per_buffer)
     def __init__(self, *args):
         self._update_pa_data()
     def __dealloc__(self):
@@ -360,11 +403,11 @@ cdef class StreamCallback:
             self.sample_time, buffer_len, in_chan, out_chan, itemsize,
         ))
         if in_chan > 0:
-            user_data.in_buffer = sample_buffer_create(self.sample_time.data, buffer_len, in_chan, itemsize)
+            user_data.in_buffer = sample_buffer_create(self.sample_time.data, buffer_len, in_chan, info.sample_format)
         else:
             user_data.in_buffer = NULL
         if out_chan > 0:
-            user_data.out_buffer = sample_buffer_create(self.sample_time.data, buffer_len, out_chan, itemsize)
+            user_data.out_buffer = sample_buffer_create(self.sample_time.data, buffer_len, out_chan, info.sample_format)
         else:
             user_data.out_buffer = NULL
         user_data.input_channels = in_chan
