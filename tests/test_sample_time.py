@@ -6,24 +6,6 @@ import numpy as np
 from cysounddevice.types import SampleTime
 # import _test_sample_time
 
-SAMPLE_RATES = [
-    22050, 44100, 48000, 88200, 96000,
-]
-
-BLOCK_SIZES = [
-    256, 512, 1024,
-]
-
-# USE_CYTHON = True
-
-@pytest.fixture(params=SAMPLE_RATES)
-def sample_rate(request):
-    return request.param
-
-@pytest.fixture(params=BLOCK_SIZES)
-def block_size(request):
-    return request.param
-
 def test_blocks(sample_rate, block_size):
     max_blocks = 256
     # if USE_CYTHON:
@@ -64,7 +46,7 @@ def test_blocks(sample_rate, block_size):
             expected_sample_index += 1
 
 
-def test_time(sample_rate, block_size):
+def test_time(sample_rate, block_size, SAMPLE_RATES):
     max_blocks = 256
     # if USE_CYTHON:
     #     _test_sample_time.test_time(sample_rate, block_size, max_blocks)

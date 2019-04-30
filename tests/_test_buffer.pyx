@@ -115,7 +115,7 @@ cdef bint _test() except *:
     cdef int write_available = length
     cdef int read_available = 0
 
-    cdef SampleBuffer* bfr = sample_buffer_create(s.data, length, nchannels, itemsize)
+    cdef SampleBuffer* bfr = sample_buffer_create(s.data, length, nchannels, &SampleFormats.sf_float32)
     cdef BufferItem* bfr_item
     print('created')
     try:
