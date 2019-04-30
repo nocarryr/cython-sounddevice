@@ -11,6 +11,7 @@ cdef struct BufferItem:
     Py_ssize_t itemsize
     Py_ssize_t nchannels
     Py_ssize_t total_size
+    SampleBuffer* parent_buffer
     char *bfr
 
 cdef struct SampleBuffer:
@@ -33,6 +34,7 @@ cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         SampleFormat* sample_format) except *
 cdef void sample_buffer_destroy(SampleBuffer* bfr) except *
 cdef int sample_buffer_write(SampleBuffer* bfr, const void *data, Py_ssize_t length) nogil
+cdef int sample_buffer_write_sf32(SampleBuffer* bfr, float[:,:] data) nogil
 cdef int sample_buffer_write_from_callback(SampleBuffer* bfr,
                                            const void *data,
                                            Py_ssize_t length,
@@ -42,4 +44,4 @@ cdef SampleTime_s* sample_buffer_read_from_callback(SampleBuffer* bfr,
                                                     char *data,
                                                     Py_ssize_t length,
                                                     PaTime dacTime) nogil
-cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) except *
+cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) nogil

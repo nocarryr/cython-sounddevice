@@ -7,6 +7,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 from cysounddevice.pawrapper cimport *
 from cysounddevice.types cimport *
+from cysounddevice.conversion cimport pack_buffer_item, unpack_buffer_item
 
 cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
                                         Py_ssize_t length,
@@ -47,6 +48,7 @@ cdef SampleBuffer* sample_buffer_create(SampleTime_s start_time,
         item.bfr = <char *>malloc(bfr_length)
         if item.bfr == NULL:
             raise MemoryError()
+        item.parent_buffer = bfr
         copy_sample_time_struct(&_start_time, &item.start_time)
         _start_time.block += 1
 
@@ -58,6 +60,7 @@ cdef void sample_buffer_destroy(SampleBuffer* bfr) except *:
 
     for i in range(bfr.length):
         item = &bfr.items[i]
+        item.parent_buffer = NULL
         free(item.bfr)
         item.bfr = NULL
     item = NULL
@@ -81,6 +84,21 @@ cdef int sample_buffer_write(SampleBuffer* bfr, const void *data, Py_ssize_t len
         return 0
     cdef const char *cdata = <char *>data
     copy_char_array(&cdata, &item.bfr, item.total_size)
+    item.start_time.block = bfr.current_block
+    _sample_buffer_write_advance(bfr)
+    return 1
+
+cdef int sample_buffer_write_sf32(SampleBuffer* bfr, float[:,:] data) nogil:
+    if bfr.write_available <= 0:
+        return 0
+    cdef BufferItem* item = &bfr.items[bfr.write_index]
+    cdef Py_ssize_t nchannels = data.shape[0]
+    cdef Py_ssize_t length = data.shape[1]
+    if length != item.length:
+        return 0
+    if nchannels != item.nchannels:
+        return 0
+    pack_buffer_item(item, data)
     item.start_time.block = bfr.current_block
     _sample_buffer_write_advance(bfr)
     return 1
@@ -138,9 +156,7 @@ cdef SampleTime_s* sample_buffer_read_from_callback(SampleBuffer* bfr,
     _sample_buffer_read_advance(bfr)
     return &item.start_time
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) except *:
+cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) nogil:
     if bfr.read_available <= 0:
         return NULL
     cdef Py_ssize_t nchannels = data.shape[0]
@@ -150,16 +166,7 @@ cdef SampleTime_s* sample_buffer_read_sf32(SampleBuffer* bfr, float[:,:] data) e
         return NULL
     if nchannels != item.nchannels:
         return NULL
-    cdef Py_ssize_t i, chan_ix, chan_num
-    cdef void *vptr = <void *>item.bfr
-    cdef float[::1] data_view = <float[:length*nchannels]>vptr
-    chan_ix = 0
-    chan_num = 0
-    i = 0
-    for chan_ix in range(length):
-        for chan_num in range(nchannels):
-            data[chan_num,chan_ix] = data_view[i]
-            i += 1
+    unpack_buffer_item(item, data)
     _sample_buffer_read_advance(bfr)
     return &item.start_time
 
