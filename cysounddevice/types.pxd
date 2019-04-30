@@ -40,7 +40,10 @@ cdef struct SampleFormat:
     bint is_signed
     bint is_float
     bint is_24bit
-    void* dtype_ptr
+    double min_value
+    double max_value
+    double ptp_value
+    double float32_multiplier
     char* name
 
 ctypedef struct SampleFormats_s:
@@ -57,6 +60,8 @@ cdef dict sample_format_to_dict(SampleFormat* sf)
 cdef SampleFormat* get_sample_format_by_name(str name) except *
 cdef SampleFormat* get_sample_format(Py_ssize_t bit_width, bint is_signed, bint is_float) except *
 cdef SampleFormat* get_sample_format_by_kwargs(dict kwargs) except *
+cdef object _get_dtype_for_sample_format(SampleFormat* sf)
+cpdef object get_dtype_for_sample_format(str name)
 
 ctypedef enum IOType:
     IOType_Input = 1
