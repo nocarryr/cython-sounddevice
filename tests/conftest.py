@@ -1,6 +1,10 @@
+import os
+from pathlib import Path
+import time
 import pytest
 
 from cysounddevice import types
+from cysounddevice import PortAudio
 
 SAMPLE_RATES_ = (
     22050, 44100, 48000, 88200, 96000,
@@ -46,3 +50,76 @@ def sample_format(request):
 @pytest.fixture(params=[1,2,4,8])
 def nchannels(request):
     return request.param
+
+class PaFileLock:
+    max_wait = 300
+    file_fields = ('ppid', 'pid', 'worker_id')
+    def __init__(self, worker_id):
+        self.worker_id = worker_id
+        self.pid = os.getpid()
+        self.ppid = os.getppid()
+        self.uid = '\t'.join([str(getattr(self, attr)) for attr in self.file_fields])
+    @property
+    def pid_file(self):
+        base_dir = Path('.').joinpath('pytest-workers-pid')
+        base_dir.mkdir(exist_ok=True)
+        p = base_dir.joinpath('PaLock.pid')
+        return p.resolve()
+    def read_file(self):
+        p = self.pid_file
+        s = p.read_text()
+        return s
+    def write_file(self):
+        p = self.pid_file
+        p.write_text(self.uid)
+    def _acquire(self):
+        p = self.pid_file
+        if p.exists():
+            s = self.read_file()
+            if s == self.uid:
+                return True
+            return False
+        else:
+            try:
+                p.touch(exist_ok=False)
+            except FileExistsError:
+                return False
+            self.write_file()
+            return True
+    def _release(self):
+        p = self.pid_file
+        if not p.exists():
+            return
+        if self.read_file() == self.uid:
+            p.unlink()
+    def acquire(self):
+        start_ts = time.time()
+        end_ts = start_ts + self.max_wait
+        while True:
+            r = self._acquire()
+            if r:
+                return True
+            if time.time() >= end_ts:
+                raise Exception('PaFileLock timeout')
+            time.sleep(.1)
+        return False
+    def release(self):
+        self._release()
+    def __enter__(self):
+        r = self.acquire()
+        assert r is True
+        return self
+    def __exit__(self, *args):
+        self._release()
+
+@pytest.fixture
+def port_audio(worker_id):
+    pa_lock = PaFileLock(worker_id)
+    pa = None
+    with pa_lock:
+        pa = PortAudio()
+        print('openning PortAudio')
+        with pa:
+            yield pa
+            print('closing PortAudio')
+        assert not pa._initialized
