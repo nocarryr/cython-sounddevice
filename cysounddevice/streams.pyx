@@ -61,6 +61,7 @@ cdef class Stream:
         if self.active:
             return
         self._frames_per_buffer = value
+        self.stream_info._update_pa_data()
     @property
     def active(self):
         if self.check_active():
@@ -161,13 +162,12 @@ cdef class Stream:
         cdef const PaStreamInfo* info = Pa_GetStreamInfo(ptr)
         if info == NULL:
             raise Exception('Could not get stream info')
-        self.sample_rate = info.sampleRate
-        self.stream_info.input_latency = info.inputLatency
-        self.stream_info.output_latency = info.outputLatency
+        self.stream_info._update_from_pa_stream_info(info)
         self._pa_stream_ptr = ptr
         cdef PaError err = Pa_StartStream(ptr)
         if err != paStreamIsNotStopped:
             handle_error(err)
+        self.starting = False
         # print('waiting...')
         # Pa_Sleep(5000)
         # print('stopping...')
@@ -213,9 +213,8 @@ cdef class StreamInfo:
         self._input_channels = device.num_inputs
         self._output_channels = device.num_outputs
         self._sample_rate = device.default_sample_rate
-        self.suggested_latency = device._ptr.defaultHighInputLatency
-        self.input_latency = 0
-        self.output_latency = 0
+        self._input_latency = 0
+        self._output_latency = 0
         self._pa_input_params.device = device.index
         self._pa_output_params.device = device.index
     def __init__(self, *args, **kwargs):
@@ -271,6 +270,35 @@ cdef class StreamInfo:
             return
         self._sample_rate = value
         self._update_pa_data()
+    @property
+    def suggested_latency(self):
+        cdef double result
+        cdef double block_size = <double>self.stream.frames_per_buffer * 2
+        result = block_size / self._sample_rate
+        return result
+    @property
+    def input_latency(self):
+        return self._input_latency
+    @input_latency.setter
+    def input_latency(self, PaTime value):
+        if self.stream.active:
+            return
+        if value == self._input_latency:
+            return
+        self._input_latency = value
+        print('input_latency={}'.format(value))
+    @property
+    def output_latency(self):
+        return self._output_latency
+    @output_latency.setter
+    def output_latency(self, PaTime value):
+        if self.stream.active:
+            return
+        if value == self._output_latency:
+            return
+        self._output_latency = value
+        print('output_latency={}'.format(value))
+
     cdef PaStreamParameters* get_input_params(self):
         if self._input_channels > 0:
             return &self._pa_input_params
@@ -281,6 +309,13 @@ cdef class StreamInfo:
             return &self._pa_output_params
         else:
             return NULL
+
+    cdef void _update_from_pa_stream_info(self, const PaStreamInfo* info) except *:
+        self._sample_rate = info.sampleRate
+        self._input_latency = info.inputLatency
+        self._output_latency = info.outputLatency
+        print('input_latency={}, output_latency={}'.format(info.inputLatency, info.outputLatency))
+
     cdef void _update_pa_data(self) except *:
         self._pa_input_params.device = self.device.index
         self._pa_input_params.channelCount = self.input_channels
@@ -405,6 +440,10 @@ cdef class StreamCallback:
         cdef CallbackUserData* user_data = <CallbackUserData*>PyMem_Malloc(sizeof(CallbackUserData))
         if not user_data:
             raise MemoryError()
+
+        if (self.sample_time.sample_rate != self.stream.sample_rate or
+                self.sample_time.block_size != self.stream.frames_per_buffer):
+            self.sample_time = SampleTime(self.stream.sample_rate, self.stream.frames_per_buffer)
 
         print('{!r}, bfr_len={}, in={}, out={}, itemsize={}'.format(
             self.sample_time, buffer_len, in_chan, out_chan, itemsize,

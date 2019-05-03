@@ -39,13 +39,13 @@ cdef class StreamInfo:
     cdef Stream stream
     cdef readonly double _sample_rate
     cdef readonly int _input_channels, _output_channels
-    cdef public PaTime suggested_latency
-    cdef readonly PaTime input_latency, output_latency
+    cdef readonly PaTime _input_latency, _output_latency
     cdef public bint clip_off, dither_off, never_drop_input, prime_out_buffer
 
     cdef void _set_sample_format(self, str name, dict kwargs) except *
     cdef PaStreamParameters* get_input_params(self)
     cdef PaStreamParameters* get_output_params(self)
+    cdef void _update_from_pa_stream_info(self, const PaStreamInfo* info) except *
     cdef void _update_pa_data(self) except *
 
 cdef class StreamCallback:
