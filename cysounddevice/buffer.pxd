@@ -40,7 +40,6 @@ cdef int sample_buffer_write_from_callback(SampleBuffer* bfr,
                                            const void *data,
                                            Py_ssize_t length,
                                            PaTime adcTime) nogil
-cdef int sample_buffer_fill_zeros(SampleBuffer* bfr, Py_ssize_t num_blocks) except *
 cdef SampleTime_s* sample_buffer_read(SampleBuffer* bfr, char *data, Py_ssize_t length) nogil
 cdef SampleTime_s* sample_buffer_read_from_callback(SampleBuffer* bfr,
                                                     char *data,
