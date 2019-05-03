@@ -143,6 +143,9 @@ cdef class PortAudio:
         self._initialized = False
     def __init__(self, *args):
         atexit.register(self.close)
+    @property
+    def devices(self):
+        return list(self.iter_devices())
     cpdef open(self):
         """Initialize the PortAudio library and gather HostApi and Device info
 
