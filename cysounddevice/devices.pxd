@@ -27,7 +27,7 @@ cdef class HostApiInfo:
 cdef class PortAudio:
     cdef dict devices_by_paindex, devices_by_name
     cdef dict host_apis_by_paindex, host_apis_by_name
-    cdef bint _initialized
+    cdef readonly bint _initialized
     cdef readonly DeviceInfo default_input, default_output
 
     cpdef open(self)
