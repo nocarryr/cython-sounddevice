@@ -178,6 +178,11 @@ cdef class PortAudio:
         self.devices_by_name.clear()
         self.devices_by_paindex.clear()
         handle_error(Pa_Terminate())
+    def __enter__(self):
+        self.open()
+        return self
+    def __exit__(self, *args):
+        self.close()
     def iter_devices(self):
         """Iterate over all devices as :class:`DeviceInfo` instances
         """
