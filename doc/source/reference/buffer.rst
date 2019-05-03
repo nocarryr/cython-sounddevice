@@ -3,6 +3,28 @@ cysounddevice.buffer module
 
 .. automodule:: cysounddevice.buffer
 
+StreamBuffer class
+------------------
+
+.. autoclass:: cysounddevice.buffer.StreamBuffer
+    :members:
+    :member-order: groupwise
+
+StreamInputBuffer class
+-----------------------
+
+.. autoclass:: cysounddevice.buffer.StreamInputBuffer
+    :members:
+    :member-order: groupwise
+
+StreamOutputBuffer class
+------------------------
+
+.. autoclass:: cysounddevice.buffer.StreamOutputBuffer
+    :members:
+    :member-order: groupwise
+
+
 C-API
 -----
 

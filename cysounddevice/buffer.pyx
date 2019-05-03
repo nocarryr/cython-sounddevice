@@ -182,6 +182,16 @@ cdef void copy_char_array(const char **src, char **dest, Py_ssize_t length) nogi
 
 
 cdef class StreamBuffer:
+    """Convenience class wrapping buffer module's functions
+
+    Arguments:
+        stream (Stream):
+
+    Attributes:
+        nchannels (int): Number of channels
+        read_available (int): Number of BufferItems available for reading
+        write_available (int): Number of BufferItems available for writing
+    """
     def __cinit__(self, Stream stream):
         self.stream = stream
         self.sample_buffer = NULL
@@ -192,6 +202,22 @@ cdef class StreamBuffer:
             if self.sample_buffer:
                 sample_buffer_destroy(self.sample_buffer)
         self.sample_buffer = NULL
+    @property
+    def read_available(self):
+        cdef int result = 0
+        cdef SampleBuffer* bfr
+        if self.sample_buffer != NULL:
+            bfr = self.sample_buffer
+            result = bfr.read_available
+        return result
+    @property
+    def write_available(self):
+        cdef int result = 0
+        cdef SampleBuffer* bfr
+        if self.sample_buffer != NULL:
+            bfr = self.sample_buffer
+            result = bfr.write_available
+        return result
 
     # cpdef _build_buffer(self, Py_ssize_t buffer_len, Py_ssize_t nchannels, Py_ssize_t itemsize):
     #     assert self.sample_buffer == NULL
@@ -219,6 +245,8 @@ cdef class StreamBuffer:
 
 cdef class StreamInputBuffer(StreamBuffer):
     cpdef bint ready(self):
+        """Check the SampleBuffer for read availability
+        """
         if self.sample_buffer == NULL:
             return False
         cdef SampleBuffer* bfr = self.sample_buffer
@@ -231,7 +259,7 @@ cdef class StreamInputBuffer(StreamBuffer):
         into shape (nchannels, length).
 
         Note:
-            The sample format must be float32
+            The data will be converted to float32 and scaled to the range ``-1 to 1``
 
         Arguments:
             data: A 2-dimensional float array (or memoryview) to copy data into
@@ -259,6 +287,8 @@ cdef class StreamInputBuffer(StreamBuffer):
 
 cdef class StreamOutputBuffer(StreamBuffer):
     cpdef bint ready(self):
+        """Check the SampleBuffer for write availability
+        """
         if self.sample_buffer == NULL:
             return False
         cdef SampleBuffer* bfr = self.sample_buffer
@@ -266,6 +296,11 @@ cdef class StreamOutputBuffer(StreamBuffer):
 
     cpdef int write_output_sf32(self, float[:,:] data):
         """Copy stream data to the :c:type:`SampleBuffer`
+
+        Note:
+            The input data is expected to be float32 in the range ``-1 to 1``.
+            It will be scaled and converted to the appropriate type before
+            writing to the buffer.
 
         Arguments:
             data: A 2-dimensional float array (or memoryview) to copy data from
