@@ -84,6 +84,7 @@ cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil
 cdef PaTime SampleTime_to_rel_time(SampleTime_s* st) nogil
 cdef PaTime SampleTime_to_pa_time(SampleTime_s* st) nogil
 cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint allow_misaligned) nogil
+cdef void SampleTime_set_block_vars(SampleTime_s* st, BLOCK_t block, Py_ssize_t block_index) nogil
 cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 cdef bint SampleTime_set_rel_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 

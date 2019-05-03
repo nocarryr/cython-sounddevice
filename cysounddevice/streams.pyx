@@ -353,6 +353,7 @@ cdef int _stream_callback(const void* in_bfr,
                           PaStreamCallbackFlags status_flags,
                           void* user_data) nogil:
     cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
+    cdef SampleBuffer* samp_bfr
     cdef SampleTime_s* start_time
     cdef PaTime adcTime, dacTime
     cdef int r
@@ -360,37 +361,47 @@ cdef int _stream_callback(const void* in_bfr,
     cdef char *in_ptr = <char *>in_bfr
     cdef char *out_ptr = <char *>out_bfr
 
+    if status_flags != 0:
+        with gil:
+            print('status_flags: ', status_flags)
+
     if cb_data.input_channels > 0:
+        samp_bfr = cb_data.in_buffer
         adcTime = time_info.inputBufferAdcTime
-        if cb_data.in_buffer.current_block == 0:
+        if samp_bfr.current_block == 0:
             cb_data.firstInputAdcTime = adcTime
-            if cb_data.in_buffer != NULL:
-                cb_data.in_buffer.callback_time.time_offset = adcTime
-                SampleTime_set_pa_time(&cb_data.in_buffer.callback_time, adcTime, True)
-        if cb_data.in_buffer.write_available > 0:
-            r = sample_buffer_write_from_callback(cb_data.in_buffer, in_ptr, frame_count, adcTime)
+            samp_bfr.callback_time.time_offset = adcTime
+            SampleTime_set_pa_time(&samp_bfr.callback_time, adcTime, True)
+        else:
+            SampleTime_set_block_vars(&samp_bfr.callback_time, samp_bfr.current_block, 0)
+        if samp_bfr.write_available > 0:
+            r = sample_buffer_write_from_callback(samp_bfr, in_ptr, frame_count, adcTime)
             if r != 1:
                 with gil:
-                    print('abort in in_buffer: adcTime={}, write_available={}, r={}'.format(
-                        adcTime, cb_data.in_buffer.write_available, r,
+                    print('abort in in_buffer: block={}, adcTime={}, write_available={}, r={}, frame_count={}, bfr_item_len={}'.format(
+                        samp_bfr.current_block,
+                        adcTime - samp_bfr.callback_time.time_offset,
+                        samp_bfr.write_available, r,
+                        frame_count, samp_bfr.item_length,
                     ))
                 return paAbort
-        cb_data.in_buffer.current_block += 1
+        samp_bfr.current_block += 1
     if cb_data.output_channels > 0:
+        samp_bfr = cb_data.out_buffer
         dacTime = time_info.outputBufferDacTime
-        if cb_data.out_buffer.current_block == 0:
-            cb_data.firstOutputDacTime = time_info.outputBufferDacTime
-            if cb_data.out_buffer != NULL:
-                cb_data.out_buffer.callback_time.time_offset = dacTime
-                SampleTime_set_pa_time(&cb_data.out_buffer.callback_time, dacTime, True)
-        cb_data.out_buffer.callback_time.pa_time = dacTime
-        if cb_data.out_buffer.read_available > 0:
-            start_time = sample_buffer_read_from_callback(cb_data.out_buffer, out_ptr, frame_count, dacTime)
+        if samp_bfr.current_block == 0:
+            cb_data.firstOutputDacTime = dacTime
+            samp_bfr.callback_time.time_offset = dacTime
+            SampleTime_set_pa_time(&samp_bfr.callback_time, dacTime, True)
+        else:
+            SampleTime_set_block_vars(&samp_bfr.callback_time, samp_bfr.current_block, 0)
+        if samp_bfr.read_available > 0:
+            start_time = sample_buffer_read_from_callback(samp_bfr, out_ptr, frame_count, dacTime)
             if start_time == NULL:
                 with gil:
                     print('abort in out_buffer')
                 return paAbort
-        cb_data.out_buffer.current_block += 1
+        samp_bfr.current_block += 1
     return paContinue
 
 

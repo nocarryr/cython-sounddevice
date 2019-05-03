@@ -112,9 +112,9 @@ cdef int sample_buffer_write_from_callback(SampleBuffer* bfr,
     cdef BufferItem* item = &bfr.items[bfr.write_index]
     if length != item.length:
         return 0
-    item.start_time.time_offset = bfr.callback_time.time_offset
-    if not SampleTime_set_pa_time(&item.start_time, adcTime, True):
-        return 2
+    cdef PaTime time_offset = adcTime - bfr.callback_time.time_offset
+    item.start_time.time_offset = time_offset
+    SampleTime_set_block_vars(&item.start_time, bfr.callback_time.block, 0)
     cdef const char *cdata = <char *>data
     copy_char_array(&cdata, &item.bfr, item.total_size)
     _sample_buffer_write_advance(bfr)
@@ -148,9 +148,9 @@ cdef SampleTime_s* sample_buffer_read_from_callback(SampleBuffer* bfr,
     cdef BufferItem* item = &bfr.items[bfr.read_index]
     if length != item.length:
         return NULL
-    item.start_time.time_offset = bfr.callback_time.time_offset
-    if not SampleTime_set_pa_time(&item.start_time, dacTime, False):
-        return NULL
+    cdef PaTime time_offset = dacTime - bfr.callback_time.time_offset
+    item.start_time.time_offset = time_offset
+    SampleTime_set_block_vars(&item.start_time, bfr.callback_time.block, 0)
     cdef const char *item_bfr = item.bfr
     copy_char_array(&item_bfr, &data, item.total_size)
     _sample_buffer_read_advance(bfr)

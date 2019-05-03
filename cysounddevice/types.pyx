@@ -177,6 +177,12 @@ cdef bint SampleTime_set_sample_index(SampleTime_s* st, SAMPLE_INDEX_t idx, bint
     st.pa_time = st.rel_time + st.time_offset
     return True
 
+cdef void SampleTime_set_block_vars(SampleTime_s* st, BLOCK_t block, Py_ssize_t block_index) nogil:
+    st.block = block
+    st.block_index = block_index
+    st.rel_time = SampleTime_to_rel_time(st)
+    st.pa_time = st.rel_time + st.time_offset
+
 @cython.cdivision(True)
 cdef bint SampleTime_set_rel_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil:
     cdef SAMPLE_INDEX_t sample_index = llrint(t * st.sample_rate)
