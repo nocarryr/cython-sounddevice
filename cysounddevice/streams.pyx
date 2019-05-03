@@ -29,11 +29,19 @@ cdef TestData_s TestData
 cdef class Stream:
     """A stream for audio input and output
 
+    Arguments:
+        device (DeviceInfo):
+
+    Keyword Arguments:
+        frames_per_buffer (int):
+
     Attributes:
         device (DeviceInfo): The :class:`~cysounddevice.devices.DeviceInfo`
             instance that created the stream
         stream_info (StreamInfo): A :class:`StreamInfo` instance used to
             configure stream parameters
+        input_buffer (StreamInputBuffer):
+        output_buffer (StreamOutputBuffer):
         callback_handler (StreamCallback): A :class:`StreamCallback` instance
             to handle callbacks from PortAudio
         frames_per_buffer (int): Number of samples per callback (block size)
@@ -197,6 +205,13 @@ cdef class Stream:
 
 cdef class StreamInfo:
     """Configuration parameters for :class:`Stream`
+
+    Arguments:
+        stream (Stream):
+
+    Keyword Arguments:
+        input_channels (int):
+        output_channels (int):
 
     Attributes:
         sample_format (SampleFormat): The sample format for the stream, see
@@ -415,6 +430,9 @@ cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
 
 cdef class StreamCallback:
     """Handler for PortAudio callbacks
+
+    Arguments:
+        stream (Stream):
 
     Attributes:
         stream (Stream): The :class:`Stream` that created the callback
