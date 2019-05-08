@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import time
+import subprocess
+import shlex
 import pytest
 
 from cysounddevice import types
@@ -72,12 +74,31 @@ class PaFileLock:
     def write_file(self):
         p = self.pid_file
         p.write_text(self.uid)
+    def check_proc_exists(self, pid):
+        cmd_str = f'ps -q {pid} --no-headers'
+        try:
+            s = subprocess.check_output(shlex.split(cmd_str))
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode == 1 and not len(exc.output):
+                return False
+            raise
+        return len(s) > 0
+    def _check_dead_proc(self):
+        dead = False
+        s = self.read_file()
+        ppid, pid = [int(v) for v in s.split('\t')[:2]]
+        if self.check_proc_exists(pid):
+            return
+        print('removing dead pid_file')
+        self.pid_file.unlink()
     def _acquire(self):
         p = self.pid_file
         if p.exists():
             s = self.read_file()
             if s == self.uid:
                 return True
+            else:
+                self._check_dead_proc()
             return False
         else:
             try:
