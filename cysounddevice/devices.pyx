@@ -99,10 +99,21 @@ cdef class HostApiInfo:
         assert self._ptr.deviceCount >= 0
         cdef Py_ssize_t count = self._ptr.deviceCount
         return count
+    @property
+    def devices(self):
+        return list(self.iter_devices())
     cpdef DeviceInfo get_device_by_name(self, str name):
         """Get a device by name
         """
         return self.devices_by_name[name]
+    def iter_devices(self):
+        """Iterate over all devices as :class:`DeviceInfo` instances
+        """
+        cdef DeviceInfo device
+        cdef PaDeviceIndex ix
+        for ix in sorted(self.devices_by_paindex.keys()):
+            device = self.devices_by_paindex[ix]
+            yield device
     cdef void _get_info(self) except *:
         self._ptr = Pa_GetHostApiInfo(self.index)
     cdef void _add_device(self, DeviceInfo device) except *:
@@ -144,6 +155,9 @@ cdef class PortAudio:
     def __init__(self, *args):
         atexit.register(self.close)
     @property
+    def host_apis(self):
+        return list(self.iter_hostapis())
+    @property
     def devices(self):
         return list(self.iter_devices())
     cpdef open(self):
@@ -183,11 +197,21 @@ cdef class PortAudio:
         return self
     def __exit__(self, *args):
         self.close()
+    def iter_hostapis(self):
+        """Iterate over all HostApis as :class:`HostApiInfo` instances
+        """
+        cdef HostApiInfo host_api
+        cdef PaHostApiIndex ix
+        for ix in self.host_apis_by_paindex.keys():
+            host_api = self.host_apis_by_paindex[ix]
+            yield host_api
     def iter_devices(self):
         """Iterate over all devices as :class:`DeviceInfo` instances
         """
         cdef DeviceInfo device
-        for device in self.devices_by_paindex.values():
+        cdef PaDeviceIndex ix
+        for ix in sorted(self.devices_by_paindex.keys()):
+            device = self.devices_by_paindex[ix]
             yield device
     cpdef DeviceInfo get_device_by_name(self, str name):
         """Get a device by name
