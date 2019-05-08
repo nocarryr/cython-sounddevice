@@ -74,7 +74,7 @@ cdef struct SampleTime_s:
     Py_ssize_t block_index
     # SAMPLE_INDEX_t sample_index
 
-cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *
+cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) nogil
 cdef SAMPLE_INDEX_t SampleTime_to_sample_index(SampleTime_s* st) nogil
 # cdef PaTime SampleTime_get_rel_time(SampleTime_s* st) nogil
 cdef PaTime SampleTime_to_rel_time(SampleTime_s* st) nogil

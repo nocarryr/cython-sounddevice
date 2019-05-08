@@ -132,7 +132,7 @@ def get_sample_formats():
 
 init_sample_formats()
 
-cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) except *:
+cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) nogil:
     ptr_to.pa_time = ptr_from.pa_time
     ptr_to.rel_time = ptr_from.rel_time
     ptr_to.time_offset = ptr_from.time_offset
