@@ -3,12 +3,10 @@
 cimport cython
 
 from libc.stdint cimport *
-import numpy as np
-cimport numpy as np
 
 from cysounddevice.pawrapper cimport *
 
-ctypedef np.npy_bool BOOL_DTYPE_t
+# ctypedef np.npy_bool BOOL_DTYPE_t
 # ctypedef np.int8 INT8_DTYPE_t
 # ctypedef np.uint8 UINT8_DTYPE_t
 # ctypedef np.int32 INT24_DTYPE_t
@@ -60,8 +58,6 @@ cdef dict sample_format_to_dict(SampleFormat* sf)
 cdef SampleFormat* get_sample_format_by_name(str name) except *
 cdef SampleFormat* get_sample_format(Py_ssize_t bit_width, bint is_signed, bint is_float) except *
 cdef SampleFormat* get_sample_format_by_kwargs(dict kwargs) except *
-cdef object _get_dtype_for_sample_format(SampleFormat* sf)
-cpdef object get_dtype_for_sample_format(str name)
 
 ctypedef enum IOType:
     IOType_Input = 1

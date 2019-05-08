@@ -1,11 +1,8 @@
 cimport cython
 from libc.math cimport llrint
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
-import numpy as np
-cimport numpy as np
 import numbers
 
-FLOAT32_DTYPE = np.float32
 
 # cdef SampleFormats_s SampleFormats
 
@@ -100,13 +97,6 @@ cdef SampleFormat* get_sample_format_by_name(str name) except *:
     else:
         raise Exception('Invalid SampleFormat name')
 
-cdef object _get_dtype_for_sample_format(SampleFormat* sf):
-    cdef str name = sf.name.decode('UTF-8')
-    return np.dtype(name)
-
-cpdef object get_dtype_for_sample_format(str name):
-    cdef SampleFormat* sf = get_sample_format_by_name(name)
-    return _get_dtype_for_sample_format(sf)
 
 cdef SampleFormat* get_sample_format(Py_ssize_t bit_width, bint is_signed, bint is_float) except *:
     if is_float:

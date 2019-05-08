@@ -12,14 +12,14 @@ def build_signal(fs, length, nchannels, fc=1000):
     roll_factor = int(length / nchannels // 2)
     for i in range(nchannels):
         result[i,:] = np.roll(a, i * roll_factor)
-    return np.asarray(result, dtype=types.FLOAT32_DTYPE)
+    return np.asarray(result, dtype='float32')
 
 def test_converters(sample_rate, block_size, sample_format):
     if sample_format['is_24bit']:
         return
     # if sample_format['is_signed']:
     #     return
-    bfr_dtype = types.get_dtype_for_sample_format(sample_format['name'])
+    bfr_dtype = np.dtype(sample_format['name'])
 
     for nchannels in [1,2,4,8]:
 

@@ -4,7 +4,6 @@ import numpy as np
 cimport numpy as np
 
 from cysounddevice.types cimport *
-from cysounddevice.types import FLOAT32_DTYPE
 from cysounddevice cimport buffer
 from cysounddevice.buffer cimport SampleBuffer, BufferItem
 from cysounddevice cimport conversion
@@ -46,7 +45,7 @@ cdef class BufferWrapper:
     cpdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] unpack_buffer_item(self):
         cdef BufferItem* item = self.buffer_item
         cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] dest = np.empty(
-            (item.nchannels, item.length), dtype=FLOAT32_DTYPE,
+            (item.nchannels, item.length), dtype='float32',
         )
         self.unpack_buffer_item_view(dest)
         return dest
@@ -54,7 +53,7 @@ cdef class BufferWrapper:
     cpdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] pack_and_unpack_item(self, float[:,:] src):
         cdef BufferItem* item = self.buffer_item
         cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] dest = np.empty(
-            (item.nchannels, item.length), dtype=FLOAT32_DTYPE,
+            (item.nchannels, item.length), dtype='float32',
         )
         cdef float[:,:] dest_view = dest
         with nogil:

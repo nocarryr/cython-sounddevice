@@ -9,7 +9,6 @@ import numpy as np
 cimport numpy as np
 
 from cysounddevice.types cimport *
-from cysounddevice.types import FLOAT32_DTYPE
 from cysounddevice.buffer cimport (
     SampleBuffer,
     BufferItem,
@@ -89,7 +88,7 @@ cdef bint _test() except *:
     cdef bint success = False
     cdef int write_result
     cdef SampleTime s = SampleTime(48000, block_size)
-    cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] sarray = np.zeros((length, block_size), dtype=FLOAT32_DTYPE)
+    cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] sarray = np.zeros((length, block_size), dtype='float32')
 
     sarray[...,:] = np.sin(np.arange(block_size))
     for i in range(length):
