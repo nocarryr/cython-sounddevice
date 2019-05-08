@@ -54,6 +54,7 @@ SampleFormats.sf_uint8.is_24bit = False
 SampleFormats.sf_uint8.name = b'uint8'
 # SampleFormats.sf_uint8.dtype_ptr = <void*>UINT8_DTYPE_t
 
+@cython.cdivision(True)
 cdef void init_sample_formats() except *:
     cdef list names = ['float32', 'int32', 'int16', 'uint8', 'int8']
     cdef str name
@@ -62,6 +63,8 @@ cdef void init_sample_formats() except *:
 
     for name in names:
         sf = get_sample_format_by_name(name)
+        if not sf.bit_width > 0:
+            continue
         if sf.is_float:
             sf.min_value = -1.0
             sf.max_value = 1.0
