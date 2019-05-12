@@ -5,8 +5,11 @@ from cysounddevice.streams cimport Stream
 
 cdef class DeviceInfo:
     cdef readonly PaDeviceIndex index
+    cdef readonly PaHostApiIndex host_api_index
     cdef readonly HostApiInfo host_api
-    cdef const PaDeviceInfo* _ptr
+    cdef readonly str name
+    cdef readonly double default_sample_rate
+    cdef readonly int num_inputs, num_outputs
     cdef readonly bint active
     cdef readonly Stream stream
 
@@ -16,7 +19,9 @@ cdef class DeviceInfo:
 
 cdef class HostApiInfo:
     cdef readonly PaHostApiIndex index
-    cdef const PaHostApiInfo* _ptr
+    cdef readonly Py_ssize_t device_count
+    cdef readonly PaDeviceIndex default_input_index, default_output_index
+    cdef readonly str name
     cdef dict devices_by_paindex, devices_by_name
     cdef readonly DeviceInfo default_input, default_output
 

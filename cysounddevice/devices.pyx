@@ -23,29 +23,18 @@ cdef class DeviceInfo:
     """
     def __cinit__(self, PaDeviceIndex index_):
         self.index = index_
-        self._ptr = NULL
         self.active = False
     def __init__(self, *args):
         self._get_info()
-    @property
-    def host_api_index(self):
-        return self._ptr.hostApi
-    @property
-    def name(self):
-        cdef bytes bname = self._ptr.name
-        cdef str name = bname.decode('UTF-8')
-        return name
-    @property
-    def num_inputs(self):
-        return self._ptr.maxInputChannels
-    @property
-    def num_outputs(self):
-        return self._ptr.maxOutputChannels
-    @property
-    def default_sample_rate(self):
-        return self._ptr.defaultSampleRate
     cdef void _get_info(self) except *:
-        self._ptr = Pa_GetDeviceInfo(self.index)
+        cdef const PaDeviceInfo* ptr = Pa_GetDeviceInfo(self.index)
+        cdef bytes bname = ptr.name
+        cdef str name = bname.decode('UTF-8')
+        self.name = name
+        self.host_api_index = ptr.hostApi
+        self.num_inputs = ptr.maxInputChannels
+        self.num_outputs = ptr.maxOutputChannels
+        self.default_sample_rate = ptr.defaultSampleRate
     cpdef Stream _open_stream(self, dict kwargs):
         if self.active:
             return
@@ -65,8 +54,6 @@ cdef class DeviceInfo:
     def __repr__(self):
         return '<{self.__class__.__name__}: {self}>'.format(self=self)
     def __str__(self):
-        if self._ptr == NULL:
-            return 'Unknown Device'
         return '{self.index} {self.name}, {self.host_api} ({self.num_inputs} in, {self.num_outputs} out)'.format(self=self)
 
 
@@ -84,21 +71,10 @@ cdef class HostApiInfo:
     """
     def __cinit__(self, PaHostApiIndex index_):
         self.index = index_
-        self._ptr = NULL
         self.devices_by_paindex = {}
         self.devices_by_name = {}
     def __init__(self, *args):
         self._get_info()
-    @property
-    def name(self):
-        cdef bytes bname = self._ptr.name
-        cdef str name = bname.decode('UTF-8')
-        return name
-    @property
-    def device_count(self):
-        assert self._ptr.deviceCount >= 0
-        cdef Py_ssize_t count = self._ptr.deviceCount
-        return count
     @property
     def devices(self):
         return list(self.iter_devices())
@@ -115,22 +91,26 @@ cdef class HostApiInfo:
             device = self.devices_by_paindex[ix]
             yield device
     cdef void _get_info(self) except *:
-        self._ptr = Pa_GetHostApiInfo(self.index)
+        cdef const PaHostApiInfo* ptr = Pa_GetHostApiInfo(self.index)
+        cdef bytes bname = ptr.name
+        cdef str name = bname.decode('UTF-8')
+        self.name = name
+        self.device_count = ptr.deviceCount
+        self.default_input_index = ptr.defaultInputDevice
+        self.default_output_index = ptr.defaultOutputDevice
     cdef void _add_device(self, DeviceInfo device) except *:
         if device.index in self.devices_by_paindex:
             return
         device.host_api = self
         self.devices_by_paindex[device.index] = device
         self.devices_by_name[device.name] = device
-        if device.index == self._ptr.defaultInputDevice:
+        if device.index == self.default_input_index:
             self.default_input = device
-        elif device.index == self._ptr.defaultOutputDevice:
+        elif device.index == self.default_output_index:
             self.default_output = device
     def __repr__(self):
         return '<{self.__class__.__name__}: {self}>'.format(self=self)
     def __str__(self):
-        if self._ptr == NULL:
-            return 'Unknown HostApi'
         return self.name
 
 
