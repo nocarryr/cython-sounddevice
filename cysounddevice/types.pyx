@@ -290,7 +290,7 @@ cdef class SampleTime:
     @rel_time.setter
     def rel_time(self, PaTime value):
         self._set_rel_time(value)
-    cdef void _set_rel_time(self, PaTime value) except *:
+    cdef void _set_rel_time(self, PaTime value) nogil:
         if self.data.rel_time == value:
             return
         SampleTime_set_rel_time(&self.data, value, True)
@@ -301,7 +301,7 @@ cdef class SampleTime:
     @pa_time.setter
     def pa_time(self, PaTime value):
         self._set_pa_time(value)
-    cdef void _set_pa_time(self, PaTime value) except *:
+    cdef void _set_pa_time(self, PaTime value) nogil:
         if self.data.pa_time == value:
             return
         SampleTime_set_pa_time(&self.data, value, True)
@@ -312,7 +312,7 @@ cdef class SampleTime:
     @time_offset.setter
     def time_offset(self, PaTime value):
         self._set_time_offset(value)
-    cdef void _set_time_offset(self, PaTime value) except *:
+    cdef void _set_time_offset(self, PaTime value) nogil:
         self.data.time_offset = value
 
     @property
@@ -321,7 +321,7 @@ cdef class SampleTime:
     @block.setter
     def block(self, BLOCK_t value):
         self._set_block(value)
-    cdef void _set_block(self, BLOCK_t value) except *:
+    cdef void _set_block(self, BLOCK_t value) nogil:
         if value == self.data.block:
             return
 
@@ -335,7 +335,7 @@ cdef class SampleTime:
     @block_index.setter
     def block_index(self, Py_ssize_t value):
         self._set_block_index(value)
-    cdef void _set_block_index(self, Py_ssize_t value) except *:
+    cdef void _set_block_index(self, Py_ssize_t value) nogil:
         if value == self.data.block_index:
             return
         self.data.block_index = value
@@ -348,10 +348,10 @@ cdef class SampleTime:
     @sample_index.setter
     def sample_index(self, SAMPLE_INDEX_t value):
         self._set_sample_index(value)
-    cdef SAMPLE_INDEX_t _get_sample_index(self):
+    cdef SAMPLE_INDEX_t _get_sample_index(self) nogil:
         return SampleTime_to_sample_index(&self.data)
     @cython.cdivision(True)
-    cdef void _set_sample_index(self, SAMPLE_INDEX_t value) except *:
+    cdef void _set_sample_index(self, SAMPLE_INDEX_t value) nogil:
         if value == self._get_sample_index():
             return
         SampleTime_set_sample_index(&self.data, value, True)

@@ -91,10 +91,10 @@ cdef class SampleTime:
     cdef SampleTime from_struct(SampleTime_s* data)
 
     cpdef SampleTime copy(self)
-    cdef void _set_rel_time(self, PaTime value) except *
-    cdef void _set_pa_time(self, PaTime value) except *
-    cdef void _set_time_offset(self, PaTime value) except *
-    cdef void _set_block(self, BLOCK_t value) except *
-    cdef void _set_block_index(self, Py_ssize_t value) except *
-    cdef SAMPLE_INDEX_t _get_sample_index(self)
-    cdef void _set_sample_index(self, SAMPLE_INDEX_t value) except *
+    cdef void _set_rel_time(self, PaTime value) nogil
+    cdef void _set_pa_time(self, PaTime value) nogil
+    cdef void _set_time_offset(self, PaTime value) nogil
+    cdef void _set_block(self, BLOCK_t value) nogil
+    cdef void _set_block_index(self, Py_ssize_t value) nogil
+    cdef SAMPLE_INDEX_t _get_sample_index(self) nogil
+    cdef void _set_sample_index(self, SAMPLE_INDEX_t value) nogil
