@@ -363,49 +363,53 @@ cdef class SampleTime:
             return
         SampleTime_set_sample_index(&self.data, value, True)
 
-    def __add__(SampleTime self, other):
-        r = self._prepare_op(other)
-        if r is None:
-            return NotImplemented
-        cdef PaTime t = r
-        cdef SampleTime obj = self.copy()
-        obj._set_rel_time(self.data.rel_time + t)
-        return obj
-    def __sub__(SampleTime self, other):
-        r = self._prepare_op(other)
-        if r is None:
-            return NotImplemented
-        cdef PaTime t = r
-        cdef SampleTime obj = self.copy()
-        obj._set_rel_time(self.data.rel_time - t)
-        return obj
-    def __iadd__(SampleTime self, other):
-        r = self._prepare_op(other)
-        if r is None:
-            return NotImplemented
-        cdef PaTime t = r
+    cdef SampleTime _handle_op(self, object other, Operation op):
+        cdef SampleTime oth_st, result
+        cdef PaTime oth_value, self_value, res_value
 
-        self._set_rel_time(self.data.rel_time + t)
-        return self
-    def __isub__(SampleTime self, other):
-        r = self._prepare_op(other)
-        if r is None:
-            return NotImplemented
-        cdef PaTime t = r
-
-        self._set_rel_time(self.data.rel_time - t)
-        return self
-    def _prepare_op(self, other):
-        cdef PaTime t
-        cdef SampleTime oth_obj
         if isinstance(other, SampleTime):
-            oth_obj = other
-            t = oth_obj.data.rel_time
+            oth_st = other
+            oth_value = oth_st.data.rel_time
         elif isinstance(other, numbers.Number):
-            t = other
+            oth_value = other
         else:
-            return None
-        return t
+            return NotImplemented
+
+        self_value = self.data.rel_time
+        if op == OP_add:
+            res_value = self_value + oth_value
+            result = self.copy()
+        elif op == OP_sub:
+            res_value = self_value - oth_value
+            result = self.copy()
+        elif op == OP_iadd:
+            res_value = self_value + oth_value
+            result = self
+        elif op == OP_isub:
+            res_value = self_value - oth_value
+            result = self
+        else:
+            res_value = self_value
+            result = self.copy()
+        result._set_rel_time(res_value)
+        return result
+
+    def __add__(SampleTime self, other):
+        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
+            return NotImplemented
+        return self._handle_op(other, Operation.OP_add)
+    def __sub__(SampleTime self, other):
+        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
+            return NotImplemented
+        return self._handle_op(other, Operation.OP_sub)
+    def __iadd__(SampleTime self, other):
+        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
+            return NotImplemented
+        return self._handle_op(other, Operation.OP_iadd)
+    def __isub__(SampleTime self, other):
+        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
+            return NotImplemented
+        return self._handle_op(other, Operation.OP_isub)
     def __richcmp__(SampleTime self, other, int op):
         cdef PaTime self_t, oth_t
         cdef SampleTime oth_obj

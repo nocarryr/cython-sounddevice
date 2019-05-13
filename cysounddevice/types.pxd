@@ -84,6 +84,17 @@ cdef void SampleTime_set_block_vars(SampleTime_s* st, BLOCK_t block, Py_ssize_t 
 cdef bint SampleTime_set_pa_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 cdef bint SampleTime_set_rel_time(SampleTime_s* st, PaTime t, bint allow_misaligned) nogil
 
+
+ctypedef enum Operation:
+    OP_add
+    OP_sub
+    OP_gt
+    OP_lt
+    OP_eq
+    OP_ne
+    OP_iadd
+    OP_isub
+
 cdef class SampleTime:
     cdef SampleTime_s data
 
@@ -98,3 +109,5 @@ cdef class SampleTime:
     cdef void _set_block_index(self, Py_ssize_t value) nogil
     cdef SAMPLE_INDEX_t _get_sample_index(self) nogil
     cdef void _set_sample_index(self, SAMPLE_INDEX_t value) nogil
+
+    cdef SampleTime _handle_op(self, object other, Operation op)
