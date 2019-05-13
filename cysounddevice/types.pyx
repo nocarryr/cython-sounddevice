@@ -239,6 +239,12 @@ cdef class SampleTime:
         sample_time < sample_time2 < sample_time3
         # >>> True
 
+    Arguments:
+        block(int):
+        block_index(int):
+        block_size(int):
+        sample_rate(int):
+
     Attributes:
         data (SampleTime_s): A :c:type:`SampleTime_s` struct
         sample_rate (int): The sample rate
@@ -253,14 +259,15 @@ cdef class SampleTime:
         sample_index (int): Overall sample index calculated from :attr:`block`
             and :attr:`block_index` as ``block * block_size + block_index``
     """
-    def __cinit__(self, SAMPLE_RATE_t sample_rate, Py_ssize_t block_size):
+    def __cinit__(self, BLOCK_t block, Py_ssize_t block_index, Py_ssize_t block_size, SAMPLE_RATE_t sample_rate):
         self.data.sample_rate = sample_rate
         self.data.block_size = block_size
         self.data.pa_time = 0
         self.data.rel_time = 0
         self.data.time_offset = 0
-        self.data.block = 0
-        self.data.block_index = 0
+        self.data.block = block
+        self.data.block_index = block_index
+        SampleTime_set_block_vars(&self.data, block, block_index)
 
     def __init__(self, *args):
         assert self.sample_rate > 0
@@ -268,7 +275,7 @@ cdef class SampleTime:
 
     @staticmethod
     cdef SampleTime from_struct(SampleTime_s* data):
-        cdef SampleTime obj = SampleTime(data.sample_rate, data.block_size)
+        cdef SampleTime obj = SampleTime(0, 0, data.block_size, data.sample_rate)
         copy_sample_time_struct(data, &obj.data)
         return obj
 

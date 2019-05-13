@@ -11,7 +11,7 @@ DURATION = 3
 class Generator:
     def __init__(self, stream, play_duration):
         block_size = stream.frames_per_buffer
-        start_time = SampleTime(stream.stream_info.sample_rate, block_size)
+        start_time = SampleTime(0, 0, block_size, stream.stream_info.sample_rate)
         self.center_freq = 1000.0
 
         self.stream = stream

@@ -449,7 +449,7 @@ cdef class StreamCallback:
         self.output_overflow = False
         self.priming_output = False
         self.user_data = NULL
-        self.sample_time = SampleTime(stream.sample_rate, stream._frames_per_buffer)
+        self.sample_time = SampleTime(0, 0, stream._frames_per_buffer, stream.sample_rate)
     def __init__(self, *args):
         self._update_pa_data()
     def __dealloc__(self):
@@ -472,7 +472,7 @@ cdef class StreamCallback:
 
         if (self.sample_time.sample_rate != self.stream.sample_rate or
                 self.sample_time.block_size != self.stream.frames_per_buffer):
-            self.sample_time = SampleTime(self.stream.sample_rate, self.stream.frames_per_buffer)
+            self.sample_time = SampleTime(0, 0, self.stream.frames_per_buffer, self.stream.sample_rate)
 
         print('{!r}, bfr_len={}, in={}, out={}, itemsize={}'.format(
             self.sample_time, buffer_len, in_chan, out_chan, itemsize,

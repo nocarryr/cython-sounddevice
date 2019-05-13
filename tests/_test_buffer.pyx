@@ -87,7 +87,7 @@ cdef bint _test() except *:
     cdef Py_ssize_t i, j, k
     cdef bint success = False
     cdef int write_result
-    cdef SampleTime s = SampleTime(48000, block_size)
+    cdef SampleTime s = SampleTime(0, 0, block_size, 48000)
     cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] sarray = np.zeros((length, block_size), dtype='float32')
 
     sarray[...,:] = np.sin(np.arange(block_size))

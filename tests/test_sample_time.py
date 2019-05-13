@@ -11,7 +11,7 @@ def test_blocks(sample_rate, block_size):
     # if USE_CYTHON:
     #     _test_sample_time.test_blocks(sample_rate, block_size, max_blocks)
     #     return
-    st1 = SampleTime(sample_rate, block_size)
+    st1 = SampleTime(0, 0, block_size, sample_rate)
     st2 = st1.copy()
 
     # Check copy operation
@@ -51,14 +51,14 @@ def test_time(sample_rate, block_size, SAMPLE_RATES):
     # if USE_CYTHON:
     #     _test_sample_time.test_time(sample_rate, block_size, max_blocks)
     #     return
-    st1 = SampleTime(sample_rate, block_size)
+    st1 = SampleTime(0, 0, block_size, sample_rate)
     st2 = st1.copy()
 
     oth_sample_times = {}
     for oth_sample_rate in SAMPLE_RATES:
         if oth_sample_rate == sample_rate:
             continue
-        oth_st = SampleTime(oth_sample_rate, block_size)
+        oth_st = SampleTime(0, 0, block_size, oth_sample_rate)
         oth_sample_times[oth_sample_rate] = oth_st
 
 
@@ -97,7 +97,7 @@ def test_time_offset(sample_rate, block_size):
     # if USE_CYTHON:
     #     _test_sample_time.test_time_offset(sample_rate, block_size, max_blocks)
     #     return
-    st1 = SampleTime(sample_rate, block_size)
+    st1 = SampleTime(0, 0, block_size, sample_rate)
     st2 = st1.copy()
     time_offset = time.time()
     st2.time_offset = time_offset
@@ -133,7 +133,7 @@ def test_math_ops(sample_rate, block_size):
     # if USE_CYTHON:
     #     _test_sample_time.test_math_ops(sample_rate, block_size, max_blocks)
     #     return
-    st1 = SampleTime(sample_rate, block_size)
+    st1 = SampleTime(0, 0, block_size, sample_rate)
     st2 = st1.copy()
     time_offset = time.time()
     st2.time_offset = time_offset

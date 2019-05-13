@@ -66,6 +66,6 @@ cpdef BufferWrapper build_buffer(SAMPLE_RATE_t sample_rate,
                                  Py_ssize_t block_size,
                                  Py_ssize_t nchannels,
                                  str sample_format_str):
-    cdef SampleTime st = SampleTime(sample_rate, block_size)
+    cdef SampleTime st = SampleTime(0, 0, block_size, sample_rate)
     cdef BufferWrapper bfr = BufferWrapper(st, nchannels, sample_format_str)
     return bfr

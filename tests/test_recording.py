@@ -21,7 +21,7 @@ BLOCK_DATA_DTYPE = np.dtype([
 class Recorder:
     def __init__(self, stream, record_duration):
         block_size = stream.frames_per_buffer
-        start_time = SampleTime(stream.sample_rate, block_size)
+        start_time = SampleTime(0, 0, block_size, stream.sample_rate)
 
         self.stream = stream
         self.start_time = start_time
