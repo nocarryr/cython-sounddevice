@@ -27,8 +27,8 @@ ctypedef int16_t INT16_DTYPE_t
 ctypedef float FLOAT32_DTYPE_t
 
 ctypedef double SAMPLE_RATE_t
-ctypedef unsigned int BLOCK_t
-ctypedef unsigned long long SAMPLE_INDEX_t
+ctypedef signed int BLOCK_t
+ctypedef signed long long SAMPLE_INDEX_t
 
 
 
