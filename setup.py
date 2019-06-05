@@ -24,7 +24,5 @@ ext_modules = cythonize(
 )
 
 setup(
-    packages=find_packages(exclude='test*'),
     ext_modules=ext_modules,
-    include_package_data=True,
 )
