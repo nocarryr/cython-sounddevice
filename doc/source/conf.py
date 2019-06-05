@@ -42,7 +42,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     # 'sphinx.ext.githubpages',
-    # 'm2r',
+    'm2r',
 ]
 
 # autodoc_default_options = {'member-order':'groupwise'}
