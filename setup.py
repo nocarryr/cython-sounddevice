@@ -20,6 +20,7 @@ ext_modules = cythonize(
     compiler_directives={
         'linetrace':True,
         'embedsignature':True,
+        'binding':True,
     },
 )
 

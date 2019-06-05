@@ -14,6 +14,11 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+def isfunction(obj):
+    return hasattr(type(obj), "__code__")
+
+import inspect
+inspect.isfunction = isfunction
 
 # -- Project information -----------------------------------------------------
 
