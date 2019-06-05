@@ -42,6 +42,9 @@ for this purpose.
 
 *TODO*
 
+## License
+
+See the [LICENSE](LICENSE) file for license information (GPLv3).
 
 [PortAudio]: http://www.portaudio.com/
 [Cython]: https://cython.org/
