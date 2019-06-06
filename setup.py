@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import platform
 from setuptools import setup, find_packages
 import configparser
 from pathlib import Path
@@ -55,6 +56,16 @@ def copy_file(src_file, dest_file):
     return True
 
 def build_config():
+    def split_ext(p):
+        exts = p.suffixes
+        _p = p.with_suffix('')
+        return _p, exts
+    def join_ext(p, exts):
+        if isinstance(exts, str):
+            exts = []
+        for e in exts:
+            p = p.with_suffix(e)
+        return p
     conf = get_local_config()
     # data_path = base_p.joinpath(conf['setuptools-data']['data_path'])
     data_path = PROJECT_PATH.joinpath('_cysounddevice_data')
@@ -70,10 +81,27 @@ def build_config():
     assert incl_src.exists()
     assert incl_src.exists()
 
+    arch, _ = platform.architecture()
+    if arch == '32bit':
+        lib_suffix = '_x86'
+    else:
+        lib_suffix = '_x64'
     for pattern in ['*.dll', '*.lib', '*.exp']:
         for src_file in dll_src.glob(pattern):
+            src_stem = src_file.stem
+            if src_stem.endswith(lib_suffix):
+                bare_src_file, exts = split_ext(src_file)
+                fn = bare_src_file.name.rstrip(lib_suffix)
+                bare_src_file = bare_src_file.with_name(fn)
+                bare_src_file = join_ext(bare_src_file, exts)
+                # copy_file(src_file, bare_src_file)
+                bare_dest_file = dll_dest.joinpath(bare_src_file.name)
+                print(f'copying bare dll: {src_file} -> {bare_dest_file}')
+                copy_file(src_file, bare_dest_file)
+
             dest_file = dll_dest.joinpath(src_file.name)
             copy_file(src_file, dest_file)
+
     for src_file in incl_src.glob('*.h'):
         dest_file = incl_dest.joinpath(src_file.name)
         copy_file(src_file, dest_file)
