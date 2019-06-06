@@ -95,3 +95,6 @@ README.rst
 cysounddevice/*.c
 cysounddevice/*.html
 tests/*.c
+
+build.conf
+_cysounddevice_data/
