@@ -6,9 +6,10 @@
 Welcome to cython-sounddevice's documentation!
 ==============================================
 
+.. mdinclude:: ../../README.md
+
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 3
 
    reference/index
 

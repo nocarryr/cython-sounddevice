@@ -14,6 +14,11 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+def isfunction(obj):
+    return hasattr(type(obj), "__code__")
+
+import inspect
+inspect.isfunction = isfunction
 
 # -- Project information -----------------------------------------------------
 
@@ -37,7 +42,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     # 'sphinx.ext.githubpages',
-    # 'm2r',
+    'm2r',
 ]
 
 # autodoc_default_options = {'member-order':'groupwise'}

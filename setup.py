@@ -129,6 +129,7 @@ ext_modules = cythonize(
     compiler_directives={
         'linetrace':True,
         'embedsignature':True,
+        'binding':True,
     },
     create_extension=my_create_extension,
 )
