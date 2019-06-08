@@ -82,7 +82,8 @@ class Generator:
 
 def test_playback(port_audio, sample_rate, block_size):
     print(f'fs={sample_rate}, block_size={block_size}')
-    device = port_audio.default_output
+    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
+    device = hostapi.devices[0]
     stream_kw = dict(
         sample_rate=sample_rate,
         block_size=block_size,

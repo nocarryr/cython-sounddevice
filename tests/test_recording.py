@@ -164,7 +164,8 @@ def recorded_to_wav(filename, sample_rate, sample_data):
 def test_record(port_audio, block_size, sample_rate):
     # sample_rate = 44100
     # block_size = 512
-    device = port_audio.default_input
+    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
+    device = hostapi.devices[0]
     stream_kw = dict(
         sample_rate=sample_rate,
         frames_per_buffer=block_size,

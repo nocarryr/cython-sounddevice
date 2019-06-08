@@ -11,7 +11,7 @@ matrix:
       env:
           - ALLOW_DEPLOY=false
 before_install:
-    - sudo apt-get install portaudio19-dev
+    - sudo apt-get install portaudio19-dev jackd2
 install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy
@@ -20,6 +20,8 @@ install:
   - pip install -e .
   - ./build_tests.py
 script:
+  - jackd -ddummy -r48000 -p1024 &
   - py.test --cov-config .coveragerc --cov=cysounddevice
+  - kill %1
 after_success:
   - coveralls
