@@ -83,22 +83,22 @@ class PaFileLock:
                 return False
             raise
         return len(s) > 0
-    def _check_dead_proc(self):
-        dead = False
-        s = self.read_file()
-        ppid, pid = [int(v) for v in s.split('\t')[:2]]
-        if self.check_proc_exists(pid):
-            return
-        print('removing dead pid_file')
-        self.pid_file.unlink()
+    # def _check_dead_proc(self):
+    #     dead = False
+    #     s = self.read_file()
+    #     ppid, pid = [int(v) for v in s.split('\t')[:2]]
+    #     if self.check_proc_exists(pid):
+    #         return
+    #     print('removing dead pid_file')
+    #     self.pid_file.unlink()
     def _acquire(self):
         p = self.pid_file
         if p.exists():
             s = self.read_file()
             if s == self.uid:
                 return True
-            else:
-                self._check_dead_proc()
+            # else:
+            #     self._check_dead_proc()
             return False
         else:
             try:
@@ -131,7 +131,7 @@ class PaFileLock:
         assert r is True
         return self
     def __exit__(self, *args):
-        self._release()
+        self.release()
 
 @pytest.fixture
 def port_audio(worker_id):
@@ -143,4 +143,5 @@ def port_audio(worker_id):
         with pa:
             yield pa
             print('closing PortAudio')
+        time.sleep(.1)
         assert not pa._initialized
