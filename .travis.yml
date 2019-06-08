@@ -1,0 +1,32 @@
+language: python
+matrix:
+    include:
+    - python: "3.4"
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+    - python: "3.5"
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+    - python: "3.6"
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+    - python: "3.7"
+      dist: xenial
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+before_install:
+    - sudo apt-get install portaudio19-dev
+install:
+  - pip install -U pip setuptools wheel
+  - pip install -r requirements-dev.txt
+  - python setup.py build_ext --inplace --define CYTHON_TRACE_NOGIL
+  - pip install -e .
+  - ./build_tests.py
+script:
+  - py.test --cov-config .coveragerc --cov=cysounddevice
+after_success:
+  - coveralls

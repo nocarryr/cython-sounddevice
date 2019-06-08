@@ -1,0 +1,3 @@
+[run]
+source = cysounddevice/*
+plugins = Cython.Coverage
