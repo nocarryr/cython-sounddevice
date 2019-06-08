@@ -33,10 +33,10 @@ def cython_compile(path_pattern, options):
 
         ext_modules = cythonize(
             all_paths,
-            include_path=INCLUDE_PATH,
             nthreads=options.parallel,
             exclude_failures=options.keep_going,
             exclude=options.excludes,
+            aliases={'NUMPY_INCLUDE':INCLUDE_PATH},
             compiler_directives=options.directives,
             compile_time_env=options.compile_time_env,
             force=options.force,
