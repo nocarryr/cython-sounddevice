@@ -4,9 +4,7 @@ import numpy as np
 from cysounddevice.types import SampleTime
 from cysounddevice.utils import PortAudioError
 
-# THIS IS USER-SPECIFIC, CHANGE ME
-DEVICE_INDEX = 6
-DURATION = 3
+DURATION = 2
 
 class Generator:
     def __init__(self, stream, play_duration):
@@ -84,12 +82,12 @@ class Generator:
 
 def test_playback(port_audio, sample_rate, block_size):
     print(f'fs={sample_rate}, block_size={block_size}')
-    device = port_audio.get_device_by_index(DEVICE_INDEX)
+    device = port_audio.default_output
     stream_kw = dict(
         sample_rate=sample_rate,
         block_size=block_size,
         sample_format='float32',
-        input_channels=2,
+        output_channels=2,
     )
     stream = device.open_stream(**stream_kw)
     try:
