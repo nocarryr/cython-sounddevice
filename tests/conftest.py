@@ -9,7 +9,7 @@ from cysounddevice import types
 from cysounddevice import PortAudio
 
 SAMPLE_RATES_ = (
-    22050, 44100, 48000, 88200, 96000,
+    22050, 44100, 48000,# 88200, 96000,
     # 96000,
 )
 
