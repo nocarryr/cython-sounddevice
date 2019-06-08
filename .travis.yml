@@ -22,6 +22,7 @@ before_install:
     - sudo apt-get install portaudio19-dev
 install:
   - pip install -U pip setuptools wheel
+  - pip install -U numpy
   - pip install -r requirements-dev.txt
   - python setup.py build_ext --inplace --define CYTHON_TRACE_NOGIL
   - pip install -e .
