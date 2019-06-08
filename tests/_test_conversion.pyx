@@ -1,4 +1,5 @@
 # cython: language_level=3
+# distutils: define_macros=CYTHON_TRACE_NOGIL=1
 
 import numpy as np
 cimport numpy as np
