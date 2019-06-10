@@ -21,8 +21,6 @@ install:
   - pip install -e .
   - ./build_tests.py
 script:
-  - jackd -ddummy -r48000 -p1024 &
   - py.test --cov-config .coveragerc --cov=cysounddevice
-  - kill %1
 after_success:
   - coveralls
