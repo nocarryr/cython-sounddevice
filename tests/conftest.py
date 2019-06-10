@@ -53,6 +53,15 @@ def sample_format(request):
 def nchannels(request):
     return request.param
 
+@pytest.fixture(scope='session')
+def _worker_id(request):
+    if hasattr(request.config, "workerinput"):
+        return request.config.workerinput["workerid"]
+    elif hasattr(request.config, 'slaveinput'):
+        return request.config.slaveinput['slaveid']
+    else:
+        return "master"
+
 class PaFileLock:
     max_wait = 300
     file_fields = ('ppid', 'pid', 'worker_id')
@@ -134,8 +143,8 @@ class PaFileLock:
         self.release()
 
 @pytest.fixture
-def port_audio(worker_id):
-    pa_lock = PaFileLock(worker_id)
+def port_audio(_worker_id):
+    pa_lock = PaFileLock(_worker_id)
     pa = None
     with pa_lock:
         pa = PortAudio()
