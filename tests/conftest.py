@@ -62,95 +62,101 @@ def _worker_id(request):
     else:
         return "master"
 
-class PaFileLock:
-    max_wait = 300
-    file_fields = ('ppid', 'pid', 'worker_id')
-    def __init__(self, worker_id):
-        self.worker_id = worker_id
-        self.pid = os.getpid()
-        self.ppid = os.getppid()
-        self.uid = '\t'.join([str(getattr(self, attr)) for attr in self.file_fields])
-    @property
-    def pid_file(self):
-        base_dir = Path('.').joinpath('pytest-workers-pid')
-        base_dir.mkdir(exist_ok=True)
-        p = base_dir.joinpath('PaLock.pid')
-        return p.resolve()
-    def read_file(self):
-        p = self.pid_file
-        s = p.read_text()
-        return s
-    def write_file(self):
-        p = self.pid_file
-        p.write_text(self.uid)
-    def check_proc_exists(self, pid):
-        cmd_str = f'ps -q {pid} --no-headers'
-        try:
-            s = subprocess.check_output(shlex.split(cmd_str))
-        except subprocess.CalledProcessError as exc:
-            if exc.returncode == 1 and not len(exc.output):
-                return False
-            raise
-        return len(s) > 0
-    # def _check_dead_proc(self):
-    #     dead = False
-    #     s = self.read_file()
-    #     ppid, pid = [int(v) for v in s.split('\t')[:2]]
-    #     if self.check_proc_exists(pid):
-    #         return
-    #     print('removing dead pid_file')
-    #     self.pid_file.unlink()
-    def _acquire(self):
-        p = self.pid_file
-        if p.exists():
-            s = self.read_file()
-            if s == self.uid:
-                return True
-            # else:
-            #     self._check_dead_proc()
-            return False
+@pytest.fixture
+def port_audio(jackd_server, _worker_id):
+    pa = PortAudio()
+    with pa:
+        yield pa
+    time.sleep(.1)
+    assert not pa._initialized
+
+class JackDServer(object):
+    def __init__(self, server_name):
+        self.server_name = server_name
+        self.proc = None
+    def _jack_wait(self, timeout=None, for_quit=False):
+        if timeout is None:
+            opt_str = '--check'
         else:
+            opt_str = f'--wait --timeout {timeout}'
+        cmdstr = f'jack_wait --server {self.server_name} {opt_str}'
+        try:
+            resp = subprocess.check_output(shlex.split(cmdstr))
+        except subprocess.CalledProcessError as e:
+            if timeout is not None:
+                raise
+            return False
+        if isinstance(resp, bytes):
+            resp = resp.decode('UTF-8')
+        return 'server is available' in resp
+    def is_running(self):
+        return self._jack_wait()
+    def wait_for_start(self):
+        num_waits = 0
+        while num_waits < 5:
             try:
-                p.touch(exist_ok=False)
-            except FileExistsError:
-                return False
-            self.write_file()
-            return True
-    def _release(self):
-        p = self.pid_file
-        if not p.exists():
-            return
-        if self.read_file() == self.uid:
-            p.unlink()
-    def acquire(self):
-        start_ts = time.time()
-        end_ts = start_ts + self.max_wait
-        while True:
-            r = self._acquire()
+                r = self._jack_wait(2)
+            except subprocess.CalledProcessError:
+                r = False
             if r:
                 return True
-            if time.time() >= end_ts:
-                raise Exception('PaFileLock timeout')
-            time.sleep(.1)
+            num_waits += 1
         return False
-    def release(self):
-        self._release()
+    def wait_for_stop(self):
+        timeout = 2
+        cmdstr = f'jack_wait --server {self.server_name} --quit --timeout {timeout}'
+        num_waits = 0
+        while num_waits < 5:
+            try:
+                resp = subprocess.check_output(shlex.split(cmdstr))
+            except subprocess.CalledProcessError as e:
+                num_waits += 1
+                continue
+            if isinstance(resp, bytes):
+                resp = resp.decode('UTF-8')
+            if 'server is gone' in resp:
+                return True
+        return False
+    def start(self):
+        if self.is_running():
+            if self.proc is not None:
+                return
+            self.wait_for_stop()
+        cmdstr = f'jackd --no-realtime -n{self.server_name} -ddummy -r48000 -p1024'
+        self.proc = subprocess.Popen(shlex.split(cmdstr))
+        running = self.wait_for_start()
+        assert running is True
+    def stop(self):
+        p = self.proc
+        if p is None:
+            return
+        self.proc = None
+        p.terminate()
+        p.wait()
+        if self.is_running():
+            self.wait_for_stop()
     def __enter__(self):
-        r = self.acquire()
-        assert r is True
+        try:
+            self.start()
+        except:
+            self.stop()
+            raise
         return self
     def __exit__(self, *args):
-        self.release()
+        self.stop()
+    def __repr__(self):
+        return f'<{self.__class__}: "{self}">'
+    def __str__(self):
+        return self.server_name
 
 @pytest.fixture
-def port_audio(_worker_id):
-    pa_lock = PaFileLock(_worker_id)
-    pa = None
-    with pa_lock:
-        pa = PortAudio()
-        print('openning PortAudio')
-        with pa:
-            yield pa
-            print('closing PortAudio')
-        time.sleep(.1)
-        assert not pa._initialized
+def jackd_server(request, monkeypatch, _worker_id):
+    test_mod = request.node.name.split('[')[0]
+    test_name = request.node.name.split('[')[1].rstrip(']')
+    server_name = f'{test_mod}.{test_name}_{_worker_id}'
+
+    server = JackDServer(server_name)
+    with server:
+        monkeypatch.setenv('JACK_DEFAULT_SERVER', server_name)
+        monkeypatch.setenv('JACK_NO_START_SERVER', '1')
+        yield server.server_name
