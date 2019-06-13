@@ -17,7 +17,13 @@ before_install:
     - sudo apt-get update
     - sudo usermod -a -G audio travis
     - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils alsa-oss
+    - sudo ldconfig
     - sudo bash tools/prep_dummy_soundcard.sh
+    - sudo modprobe snd-dummy
+    - cat /lib/modules/`uname -r`/modules.alias | grep snd | grep pcm
+    - ls -al /lib/modules/`uname -r`/kernel/sound/drivers/
+    - ls -al /dev/
+    - ls -al /dev/snd/
     - aplay -l
     - aplay -L
     - cat /var/lib/asound.state
