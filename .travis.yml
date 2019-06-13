@@ -10,10 +10,14 @@ matrix:
       sudo: required
       env:
           - ALLOW_DEPLOY=false
+env:
+    global:
+        AUDIODEV=null
 before_install:
     - sudo apt-get update
-    - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils
-    - sudo modprobe snd-dummy
+    - sudo usermod -a -G audio travis
+    - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils alsa-oss
+    - sudo bash tools/prep-dummy-soundcard.sh
 install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy
