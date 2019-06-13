@@ -4,6 +4,7 @@ cimport cython
 from cython cimport view
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
+import time
 import warnings
 
 from cysounddevice.pawrapper cimport *
@@ -192,13 +193,18 @@ cdef class Stream:
     cpdef close(self):
         """Close the stream if active
         """
-        if not self.active:
+        if self._pa_stream_ptr == NULL:
             return
-        # cdef PaStream* ptr = self._pa_stream_ptr
+        cdef PaStream* ptr = self._pa_stream_ptr
         self.starting = False
+
+        self.callback_handler._send_exit_signal(2)
+        if not self.check_active():
+            Pa_AbortStream(ptr)
+
+        self._pa_stream_ptr = NULL
         # handle_error(Pa_StopStream(self._pa_stream_ptr))
         # print('stopped')
-        handle_error(Pa_CloseStream(self._pa_stream_ptr))
         self.callback_handler._free_user_data()
         print('closed')
     cdef int check_callback_errors(self) nogil except -1:
@@ -386,6 +392,9 @@ cdef int _stream_callback(const void* in_bfr,
     cdef unsigned long i, bfr_size
     cdef char *in_ptr = <char *>in_bfr
     cdef char *out_ptr = <char *>out_bfr
+    if cb_data.exit_signal:
+        cb_data.stream_exit_complete = True
+        return paComplete
 
     cb_data.error_status = CallbackError_none
     cb_data.last_callback_flags = status_flags
@@ -405,6 +414,7 @@ cdef int _stream_callback(const void* in_bfr,
             r = sample_buffer_write_from_callback(samp_bfr, in_ptr, frame_count, adcTime)
             if r != 1:
                 cb_data.error_status = CallbackError_input_aborted
+                cb_data.stream_exit_complete = True
                 return paAbort
         samp_bfr.current_block += 1
     if cb_data.output_channels > 0:
@@ -420,6 +430,7 @@ cdef int _stream_callback(const void* in_bfr,
             start_time = sample_buffer_read_from_callback(samp_bfr, out_ptr, frame_count, dacTime)
             if start_time == NULL:
                 cb_data.error_status = CallbackError_output_aborted
+                cb_data.stream_exit_complete = True
                 return paAbort
         samp_bfr.current_block += 1
     return paContinue
@@ -518,6 +529,8 @@ cdef class StreamCallback:
         user_data.output_channels = out_chan
         user_data.last_callback_flags = 0
         user_data.error_status = CallbackError_none
+        user_data.exit_signal = False
+        user_data.stream_exit_complete = False
         self.user_data = user_data
     cdef void _free_user_data(self) except *:
         cdef CallbackUserData* user_data
@@ -526,6 +539,36 @@ cdef class StreamCallback:
             self.user_data = NULL
             callback_user_data_destroy(user_data)
             PyMem_Free(user_data)
+
+    cdef void _send_exit_signal(self, float timeout) except *:
+        """Sends an exit signal to the callback and waits for it to exit
+
+        Set the `CallbackUserData.exit_signal` flag to True, then wait for the
+        `CallbackUserData.stream_exit_complete` flag to be set from the
+        PortAudio callback.
+
+        Arguments:
+            timeout(float): Time in seconds to wait for the callback to signal
+                completion. If timeout <= 0, returns immediately.
+
+        """
+        if self.user_data == NULL:
+            return
+        cdef CallbackUserData* user_data = self.user_data
+        user_data.exit_signal = True
+        if timeout <= 0:
+            return
+        if user_data.stream_exit_complete:
+            return
+
+        cdef float cur_ts, end_ts
+        cur_ts = time.time()
+        end_ts = cur_ts + timeout
+        while cur_ts <= end_ts:
+            if user_data.stream_exit_complete:
+                return
+            time.sleep(.1)
+            cur_ts = time.time()
 
     cdef void _update_pa_data(self) except *:
         cdef PaStreamCallbackFlags flags = 0

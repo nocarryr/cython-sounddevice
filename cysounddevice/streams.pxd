@@ -21,6 +21,8 @@ cdef struct CallbackUserData:
     PaTime firstOutputDacTime
     PaStreamCallbackFlags last_callback_flags
     CallbackErrorStatus error_status
+    bint exit_signal
+    bint stream_exit_complete
 
 cdef class Stream:
     cdef readonly DeviceInfo device
@@ -68,5 +70,6 @@ cdef class StreamCallback:
 
     cdef void _build_user_data(self, Py_ssize_t buffer_len=*) except *
     cdef void _free_user_data(self) except *
+    cdef void _send_exit_signal(self, float timeout) except *
     cdef void _update_pa_data(self) except *
     cdef int check_callback_errors(self) nogil except -1
