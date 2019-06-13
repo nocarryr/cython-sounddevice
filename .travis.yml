@@ -18,7 +18,7 @@ install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy
   - pip install -r requirements-dev.txt
-  - python setup.py build_ext --inplace --define CYTHON_TRACE_NOGIL
+  - python setup.py build_ext --inplace --use-cython-trace
   - pip install -e .
   - ./build_tests.py
 script:
