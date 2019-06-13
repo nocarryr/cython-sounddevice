@@ -2,32 +2,16 @@ language: python
 matrix:
     include:
     - python: "3.6"
-      dist: trusty
       sudo: required
       env:
           - ALLOW_DEPLOY=false
     - python: "3.7"
-      dist: trusty
       sudo: required
       env:
           - ALLOW_DEPLOY=false
-env:
-    global:
-        AUDIODEV=null
 before_install:
     - sudo apt-get update
-    - sudo usermod -a -G audio travis
-    - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils alsa-oss
-    - sudo ldconfig
-    - sudo bash tools/prep_dummy_soundcard.sh
-    # - cat /lib/modules/`uname -r`/modules.alias | grep snd | grep pcm
-    # - ls -al /lib/modules/`uname -r`/kernel/sound/drivers/
-    # - ls -al /dev/
-    # - ls -al /dev/snd/
-    - sudo modprobe snd-dummy
-    - aplay -l
-    - aplay -L
-    # - cat /var/lib/asound.state
+    - sudo apt-get install -y portaudio19-dev jackd2 libjack-jackd2-0
 install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy

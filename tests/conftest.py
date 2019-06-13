@@ -1,9 +1,15 @@
 import os
 import time
+import subprocess
+import shlex
 import pytest
 
 from cysounddevice import types
 from cysounddevice import PortAudio
+
+JACK_SERVER_NAME = 'pytest'
+os.environ['JACK_DEFAULT_SERVER'] = JACK_SERVER_NAME
+os.environ['JACK_NO_START_SERVER'] = '1'
 
 SAMPLE_RATES_ = (
     22050, 44100, 48000,# 88200, 96000,
@@ -60,3 +66,10 @@ def port_audio():
     assert not pa._initialized
     time.sleep(1)
     print('COMPLETE')
+
+@pytest.fixture(scope='session', autouse=True)
+def jackd_server():
+    cmdstr = f'jackd -n{JACK_SERVER_NAME} -r48000 -p1024'
+    with subprocess.Popen(shlex.split(cmdstr)) as proc:
+        time.sleep(1)
+        yield
