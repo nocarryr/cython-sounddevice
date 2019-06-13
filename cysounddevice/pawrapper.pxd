@@ -55,6 +55,7 @@ cdef extern from "portaudio.h":
     ctypedef int PaDeviceIndex
     #define paNoDevice -1
     #define paUseHostApiSpecificDeviceSpecification -2
+    cdef PaDeviceIndex paNoDevice = -1
     ctypedef int PaHostApiIndex
     PaHostApiIndex Pa_GetHostApiCount()
     PaHostApiIndex Pa_GetDefaultHostApi()

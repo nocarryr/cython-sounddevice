@@ -242,7 +242,9 @@ cdef class PortAudio:
             host_api = self.host_apis_by_paindex[device.host_api_index]
             host_api._add_device(device)
         default_ix = Pa_GetDefaultInputDevice()
-        self.default_input = self.devices_by_paindex[default_ix]
+        if default_ix != paNoDevice:
+            self.default_input = self.devices_by_paindex[default_ix]
 
         default_ix = Pa_GetDefaultOutputDevice()
-        self.default_output = self.devices_by_paindex[default_ix]
+        if default_ix != paNoDevice:
+            self.default_output = self.devices_by_paindex[default_ix]
