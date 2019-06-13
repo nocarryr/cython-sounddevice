@@ -2,11 +2,12 @@ language: python
 matrix:
     include:
     - python: "3.6"
+      dist: trusty
       sudo: required
       env:
           - ALLOW_DEPLOY=false
     - python: "3.7"
-      dist: xenial
+      dist: trusty
       sudo: required
       env:
           - ALLOW_DEPLOY=false
@@ -19,13 +20,13 @@ before_install:
     - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils alsa-oss
     - sudo ldconfig
     - sudo bash tools/prep_dummy_soundcard.sh
-    - cat /lib/modules/`uname -r`/modules.alias | grep snd | grep pcm
-    - ls -al /lib/modules/`uname -r`/kernel/sound/drivers/
-    - ls -al /dev/
-    - ls -al /dev/snd/
+    # - cat /lib/modules/`uname -r`/modules.alias | grep snd | grep pcm
+    # - ls -al /lib/modules/`uname -r`/kernel/sound/drivers/
+    # - ls -al /dev/
+    # - ls -al /dev/snd/
+    - sudo modprobe snd-dummy
     - aplay -l
     - aplay -L
-    - sudo modprobe snd-dummy
     # - cat /var/lib/asound.state
 install:
   - pip install -U pip setuptools wheel
