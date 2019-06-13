@@ -204,6 +204,7 @@ cdef class StreamBuffer:
         self.sample_buffer = NULL
     @property
     def read_available(self):
+        self.check_callback_errors()
         cdef int result = 0
         cdef SampleBuffer* bfr
         if self.sample_buffer != NULL:
@@ -212,12 +213,18 @@ cdef class StreamBuffer:
         return result
     @property
     def write_available(self):
+        self.check_callback_errors()
         cdef int result = 0
         cdef SampleBuffer* bfr
         if self.sample_buffer != NULL:
             bfr = self.sample_buffer
             result = bfr.write_available
         return result
+
+
+    cdef int check_callback_errors(self) nogil except -1:
+        self.stream.check_callback_errors()
+        return 0
 
     # cpdef _build_buffer(self, Py_ssize_t buffer_len, Py_ssize_t nchannels, Py_ssize_t itemsize):
     #     assert self.sample_buffer == NULL
@@ -242,11 +249,13 @@ cdef class StreamBuffer:
         self.own_buffer = False
         self.sample_buffer = bfr
         self.nchannels = bfr.nchannels
+        self.check_callback_errors()
 
 cdef class StreamInputBuffer(StreamBuffer):
     cpdef bint ready(self):
         """Check the SampleBuffer for read availability
         """
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return False
         cdef SampleBuffer* bfr = self.sample_buffer
@@ -274,12 +283,14 @@ cdef class StreamInputBuffer(StreamBuffer):
         return sample_time
 
     cdef SampleTime_s* _read_into(self, float[:,:] data) nogil:
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return NULL
         cdef SampleTime_s* item_st = sample_buffer_read_sf32(self.sample_buffer, data)
         return item_st
 
     cdef SampleTime_s* _read_ptr(self, char *data) nogil:
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return NULL
         cdef SampleBuffer* bfr = self.sample_buffer
@@ -289,6 +300,7 @@ cdef class StreamOutputBuffer(StreamBuffer):
     cpdef bint ready(self):
         """Check the SampleBuffer for write availability
         """
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return False
         cdef SampleBuffer* bfr = self.sample_buffer
@@ -311,6 +323,7 @@ cdef class StreamOutputBuffer(StreamBuffer):
         return self._write_output_sf32(data)
 
     cdef int _write_output_sf32(self, float[:,:] data) nogil:
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return 0
         return sample_buffer_write_sf32(self.sample_buffer, data)
@@ -327,6 +340,7 @@ cdef class StreamOutputBuffer(StreamBuffer):
         Returns:
             int: 1 on success
         """
+        self.check_callback_errors()
         if self.sample_buffer == NULL:
             return 0
         cdef SampleBuffer* bfr = self.sample_buffer
