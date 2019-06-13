@@ -56,7 +56,7 @@ class Recorder:
         r = False
 
         start_ts = time.time()
-        end_ts = start_ts + self.record_duration + .5
+        end_ts = start_ts + self.record_duration + 2
         # times = np.zeros(self.sample_data.shape[1], dtype=np.float64)
         # cdef list times = []
         # i = 0
@@ -64,6 +64,7 @@ class Recorder:
 
         # times.append(time.time())
         with self.stream:
+            print('STREAM OPENED')
             while not self.complete:
                 if not self.stream.active:
                     raise Exception('stream aborted')
@@ -88,6 +89,7 @@ class Recorder:
                 if not r:
                     # print('sleeping: i={}'.format(i))
                     time.sleep(.1)
+        print('STREAM CLOSED')
         # _times = np.array(times)
         # _times = times.copy()
         # print('avg_time={}, max={}, min={}'.format(np.mean(_times), _times.max(), _times.min()))

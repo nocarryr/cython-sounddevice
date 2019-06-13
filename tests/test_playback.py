@@ -38,19 +38,24 @@ class Generator:
         r = False
 
         start_ts = time.time()
-        end_ts = start_ts + self.play_duration
+        end_ts = start_ts + self.play_duration + 2
 
         with self.stream:
+            print('stream opened')
             while not self.complete:
                 if not self.stream.active:
                     raise Exception('stream aborted')
                 r = self.fill_buffer()
                 if self.complete:
+                    print('playback complete')
                     break
                 if time.time() >= end_ts:
+                    print('playback timeout')
                     break
                 if not r:
                     time.sleep(.1)
+            print('closing stream')
+        print('stream closed')
 
     def fill_buffer(self):
         bfr = self.stream.output_buffer
