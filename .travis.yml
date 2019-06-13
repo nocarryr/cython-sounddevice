@@ -18,6 +18,9 @@ before_install:
     - sudo usermod -a -G audio travis
     - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils alsa-oss
     - sudo bash tools/prep_dummy_soundcard.sh
+    - aplay -l
+    - aplay -L
+    - cat /var/lib/asound.state
 install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy
