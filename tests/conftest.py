@@ -58,7 +58,7 @@ def nchannels(request):
 
 
 @pytest.fixture
-def port_audio():
+def port_audio(jackd_server):
     pa = PortAudio()
     with pa:
         yield pa
@@ -67,9 +67,10 @@ def port_audio():
     time.sleep(1)
     print('COMPLETE')
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture()
 def jackd_server():
-    cmdstr = f'jackd -n{JACK_SERVER_NAME} -r48000 -p1024'
-    with subprocess.Popen(shlex.split(cmdstr)) as proc:
-        time.sleep(1)
-        yield
+    cmdstr = f'jackd -n{JACK_SERVER_NAME} -ddummy -r48000 -p1024'
+    proc = subprocess.Popen(shlex.split(cmdstr))
+    time.sleep(1)
+    yield
+    proc.kill()
