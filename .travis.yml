@@ -12,7 +12,8 @@ matrix:
           - ALLOW_DEPLOY=false
 before_install:
     - sudo apt-get update
-    - sudo apt-get install -y portaudio19-dev jackd2 libjack-jackd2-0
+    - sudo apt-get install -y portaudio19-dev alsa-base alsa-utils
+    - sudo modprobe snd-dummy
 install:
   - pip install -U pip setuptools wheel
   - pip install -U numpy
