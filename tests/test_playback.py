@@ -4,9 +4,7 @@ import numpy as np
 from cysounddevice.types import SampleTime
 from cysounddevice.utils import PortAudioError
 
-# THIS IS USER-SPECIFIC, CHANGE ME
-DEVICE_INDEX = 6
-DURATION = 3
+DURATION = 2
 
 class Generator:
     def __init__(self, stream, play_duration):
@@ -40,19 +38,24 @@ class Generator:
         r = False
 
         start_ts = time.time()
-        end_ts = start_ts + self.play_duration
+        end_ts = start_ts + self.play_duration + 2
 
         with self.stream:
+            print('stream opened')
             while not self.complete:
                 if not self.stream.active:
                     raise Exception('stream aborted')
                 r = self.fill_buffer()
                 if self.complete:
+                    print('playback complete')
                     break
                 if time.time() >= end_ts:
+                    print('playback timeout')
                     break
                 if not r:
                     time.sleep(.1)
+            print('closing stream')
+        print('stream closed')
 
     def fill_buffer(self):
         bfr = self.stream.output_buffer
@@ -84,12 +87,13 @@ class Generator:
 
 def test_playback(port_audio, sample_rate, block_size):
     print(f'fs={sample_rate}, block_size={block_size}')
-    device = port_audio.get_device_by_index(DEVICE_INDEX)
+    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
+    device = hostapi.devices[0]
     stream_kw = dict(
         sample_rate=sample_rate,
         block_size=block_size,
         sample_format='float32',
-        input_channels=2,
+        output_channels=2,
     )
     stream = device.open_stream(**stream_kw)
     try:

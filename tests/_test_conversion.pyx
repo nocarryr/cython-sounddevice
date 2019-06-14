@@ -1,4 +1,5 @@
 # cython: language_level=3
+# distutils: include_dirs=NUMPY_INCLUDE
 
 import numpy as np
 cimport numpy as np

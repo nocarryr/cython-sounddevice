@@ -1,0 +1,26 @@
+language: python
+matrix:
+    include:
+    - python: "3.6"
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+    - python: "3.7"
+      sudo: required
+      env:
+          - ALLOW_DEPLOY=false
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install -y portaudio19-dev jackd2 libjack-jackd2-0
+install:
+  - pip install -U pip setuptools wheel
+  - pip install -U numpy
+  - pip install -U pytest
+  - pip install -r requirements-dev.txt
+  - python setup.py build_ext --inplace --use-cython-trace
+  - pip install -e .
+  - ./build_tests.py
+script:
+  - py.test --cov-config .coveragerc --cov=cysounddevice --boxed
+after_success:
+  - coveralls

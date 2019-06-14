@@ -4,10 +4,14 @@ cimport cython
 from cython cimport view
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
+import time
+import warnings
+
 from cysounddevice.pawrapper cimport *
 from cysounddevice.utils cimport handle_error
 from cysounddevice.devices cimport DeviceInfo
 from cysounddevice.types cimport *
+from cysounddevice.stream_callback cimport _stream_callback
 
 # cdef enum CallbackType:
 #     CallbackTypeFunction
@@ -20,6 +24,12 @@ from cysounddevice.types cimport *
 #     char* method_name
 #     void* func_ptr
 #     CallbackType type
+
+class StreamCallbackError(RuntimeWarning):
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return repr(self.msg)
 
 cdef struct TestData_s:
     Py_ssize_t count
@@ -184,15 +194,23 @@ cdef class Stream:
     cpdef close(self):
         """Close the stream if active
         """
-        if not self.active:
+        if self._pa_stream_ptr == NULL:
             return
-        # cdef PaStream* ptr = self._pa_stream_ptr
+        cdef PaStream* ptr = self._pa_stream_ptr
         self.starting = False
+
+        self.callback_handler._send_exit_signal(2)
+        if not self.check_active():
+            Pa_AbortStream(ptr)
+
+        self._pa_stream_ptr = NULL
         # handle_error(Pa_StopStream(self._pa_stream_ptr))
         # print('stopped')
-        handle_error(Pa_CloseStream(self._pa_stream_ptr))
         self.callback_handler._free_user_data()
         print('closed')
+    cdef int check_callback_errors(self) nogil except -1:
+        self.callback_handler.check_callback_errors()
+        return 0
     def __enter__(self):
         self.open()
         return self
@@ -359,66 +377,30 @@ cdef class StreamInfo:
         s = '{self.input_channels} ins, {self.output_channels} outs, rs={self.sample_rate}'.format(self=self)
         return s
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef int _stream_callback(const void* in_bfr,
-                          void* out_bfr,
-                          unsigned long frame_count,
-                          const PaStreamCallbackTimeInfo* time_info,
-                          PaStreamCallbackFlags status_flags,
-                          void* user_data) nogil:
-    cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
-    cdef SampleBuffer* samp_bfr
-    cdef SampleTime_s* start_time
-    cdef PaTime adcTime, dacTime
-    cdef int r
-    cdef unsigned long i, bfr_size
-    cdef char *in_ptr = <char *>in_bfr
-    cdef char *out_ptr = <char *>out_bfr
 
-    if status_flags != 0:
-        with gil:
-            print('status_flags: ', status_flags)
-
-    if cb_data.input_channels > 0:
-        samp_bfr = cb_data.in_buffer
-        adcTime = time_info.inputBufferAdcTime
-        if samp_bfr.current_block == 0:
-            cb_data.firstInputAdcTime = adcTime
-            samp_bfr.callback_time.time_offset = adcTime
-            SampleTime_set_pa_time(&samp_bfr.callback_time, adcTime, True)
-        else:
-            SampleTime_set_block_vars(&samp_bfr.callback_time, samp_bfr.current_block, 0)
-        if samp_bfr.write_available > 0:
-            r = sample_buffer_write_from_callback(samp_bfr, in_ptr, frame_count, adcTime)
-            if r != 1:
-                with gil:
-                    print('abort in in_buffer: block={}, adcTime={}, write_available={}, r={}, frame_count={}, bfr_item_len={}'.format(
-                        samp_bfr.current_block,
-                        adcTime - samp_bfr.callback_time.time_offset,
-                        samp_bfr.write_available, r,
-                        frame_count, samp_bfr.item_length,
-                    ))
-                return paAbort
-        samp_bfr.current_block += 1
-    if cb_data.output_channels > 0:
-        samp_bfr = cb_data.out_buffer
-        dacTime = time_info.outputBufferDacTime
-        if samp_bfr.current_block == 0:
-            cb_data.firstOutputDacTime = dacTime
-            samp_bfr.callback_time.time_offset = dacTime
-            SampleTime_set_pa_time(&samp_bfr.callback_time, dacTime, True)
-        else:
-            SampleTime_set_block_vars(&samp_bfr.callback_time, samp_bfr.current_block, 0)
-        if samp_bfr.read_available > 0:
-            start_time = sample_buffer_read_from_callback(samp_bfr, out_ptr, frame_count, dacTime)
-            if start_time == NULL:
-                with gil:
-                    print('abort in out_buffer')
-                return paAbort
-        samp_bfr.current_block += 1
-    return paContinue
-
+cdef raise_stream_callback_error(CallbackUserData* user_data):
+    cdef PaStreamCallbackFlags cb_flags = user_data.last_callback_flags
+    cdef object msg = None
+    if user_data.error_status == CallbackError_flags:
+        msgs = []
+        if cb_flags & 1:
+            msgs.append('Input Underflow')
+        if cb_flags & 2:
+            msgs.append('Input Overflow')
+        if cb_flags & 4:
+            msgs.append('Output Underflow')
+        if cb_flags & 8:
+            msgs.append('Output Overflow')
+        if not len(msgs):
+            return
+        msg = ', '.join(msgs)
+    elif user_data.error_status == CallbackError_input_aborted:
+        msg = 'Input Aborted'
+    elif user_data.error_status == CallbackError_output_aborted:
+        msg = 'Output Aborted'
+    else:
+        return
+    warnings.warn(StreamCallbackError(msg))
 
 cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
     if user_data.in_buffer != NULL:
@@ -487,6 +469,10 @@ cdef class StreamCallback:
             user_data.out_buffer = NULL
         user_data.input_channels = in_chan
         user_data.output_channels = out_chan
+        user_data.last_callback_flags = 0
+        user_data.error_status = CallbackError_none
+        user_data.exit_signal = False
+        user_data.stream_exit_complete = False
         self.user_data = user_data
     cdef void _free_user_data(self) except *:
         cdef CallbackUserData* user_data
@@ -495,6 +481,36 @@ cdef class StreamCallback:
             self.user_data = NULL
             callback_user_data_destroy(user_data)
             PyMem_Free(user_data)
+
+    cdef void _send_exit_signal(self, float timeout) except *:
+        """Sends an exit signal to the callback and waits for it to exit
+
+        Set the `CallbackUserData.exit_signal` flag to True, then wait for the
+        `CallbackUserData.stream_exit_complete` flag to be set from the
+        PortAudio callback.
+
+        Arguments:
+            timeout(float): Time in seconds to wait for the callback to signal
+                completion. If timeout <= 0, returns immediately.
+
+        """
+        if self.user_data == NULL:
+            return
+        cdef CallbackUserData* user_data = self.user_data
+        user_data.exit_signal = True
+        if timeout <= 0:
+            return
+        if user_data.stream_exit_complete:
+            return
+
+        cdef float cur_ts, end_ts
+        cur_ts = time.time()
+        end_ts = cur_ts + timeout
+        while cur_ts <= end_ts:
+            if user_data.stream_exit_complete:
+                return
+            time.sleep(.1)
+            cur_ts = time.time()
 
     cdef void _update_pa_data(self) except *:
         cdef PaStreamCallbackFlags flags = 0
@@ -509,3 +525,12 @@ cdef class StreamCallback:
             flags |= 8
         if self.priming_output:
             flags |= 16
+
+    cdef int check_callback_errors(self) nogil except -1:
+        cdef CallbackUserData* user_data
+        if self.user_data:
+            user_data = self.user_data
+            if user_data.error_status != CallbackError_none:
+                with gil:
+                    raise_stream_callback_error(user_data)
+        return 0

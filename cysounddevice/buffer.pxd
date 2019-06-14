@@ -56,6 +56,7 @@ cdef class StreamBuffer:
 
     # cpdef _build_buffers(self, Py_ssize_t buffer_len, Py_ssize_t itemsize)
     cdef void _set_sample_buffer(self, SampleBuffer* bfr) except *
+    cdef int check_callback_errors(self) nogil except -1
 
 cdef class StreamInputBuffer(StreamBuffer):
     cpdef bint ready(self)

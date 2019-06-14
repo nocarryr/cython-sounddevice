@@ -1,0 +1,11 @@
+[run]
+source = cysounddevice/*
+plugins = Cython.Coverage
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __dealloc__
+    raise MemoryError
+    raise NotImplementedError
+    return NotImplemented

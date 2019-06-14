@@ -5,8 +5,6 @@ from scipy.io import wavfile
 from cysounddevice.types import SampleTime
 from cysounddevice.utils import PortAudioError
 
-# THIS IS USER-SPECIFIC, CHANGE ME
-DEVICE_INDEX = 4
 RECORD_DURATION = 3
 
 BLOCK_DATA_DTYPE = np.dtype([
@@ -58,7 +56,7 @@ class Recorder:
         r = False
 
         start_ts = time.time()
-        end_ts = start_ts + self.record_duration + .5
+        end_ts = start_ts + self.record_duration + 2
         # times = np.zeros(self.sample_data.shape[1], dtype=np.float64)
         # cdef list times = []
         # i = 0
@@ -66,6 +64,7 @@ class Recorder:
 
         # times.append(time.time())
         with self.stream:
+            print('STREAM OPENED')
             while not self.complete:
                 if not self.stream.active:
                     raise Exception('stream aborted')
@@ -90,6 +89,7 @@ class Recorder:
                 if not r:
                     # print('sleeping: i={}'.format(i))
                     time.sleep(.1)
+        print('STREAM CLOSED')
         # _times = np.array(times)
         # _times = times.copy()
         # print('avg_time={}, max={}, min={}'.format(np.mean(_times), _times.max(), _times.min()))
@@ -166,7 +166,8 @@ def recorded_to_wav(filename, sample_rate, sample_data):
 def test_record(port_audio, block_size, sample_rate):
     # sample_rate = 44100
     # block_size = 512
-    device = port_audio.get_device_by_index(DEVICE_INDEX)
+    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
+    device = hostapi.devices[0]
     stream_kw = dict(
         sample_rate=sample_rate,
         frames_per_buffer=block_size,
@@ -180,7 +181,7 @@ def test_record(port_audio, block_size, sample_rate):
         if exc.error_msg == 'Invalid sample rate':
             return
     # assert stream.frames_per_buffer == block_size
-    rec = Recorder(stream, 5)
+    rec = Recorder(stream, RECORD_DURATION)
     rec.record()
     assert rec.complete
 
