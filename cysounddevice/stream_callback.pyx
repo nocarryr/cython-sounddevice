@@ -10,7 +10,7 @@ cdef int _stream_callback(const void* in_bfr,
                           unsigned long frame_count,
                           const PaStreamCallbackTimeInfo* time_info,
                           PaStreamCallbackFlags status_flags,
-                          void* user_data) nogil:
+                          void* user_data) nogil: # pragma: no cover
     cdef CallbackUserData* cb_data = <CallbackUserData*>user_data
     cdef SampleBuffer* samp_bfr
     cdef SampleTime_s* start_time
