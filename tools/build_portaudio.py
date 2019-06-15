@@ -89,7 +89,7 @@ def main():
             # print(p.stdout)
             src_incl = src.src_path / 'include'
             dst_incl = EXEC_PREFIX / 'include'
-            dst_incl.mkdir()
+            dst_incl.mkdir(exist_ok=True)
             shutil.copytree(str(src_incl), str(dst_incl))
     return EXEC_PREFIX
 
