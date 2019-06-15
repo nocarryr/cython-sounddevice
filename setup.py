@@ -29,6 +29,8 @@ if '--use-cython-trace' in sys.argv:
 
 def my_create_extension(template, kwds):
     name = kwds['name']
+    if 'include_dirs' not in kwds:
+        kwds['include_dirs'] = INCLUDE_PATH
     if USE_CYTHON_TRACE:
         # avoid using CYTHON_TRACE macro for stream_callback module
         if 'stream_callback' not in name:
