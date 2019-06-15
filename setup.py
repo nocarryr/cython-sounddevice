@@ -29,6 +29,8 @@ if '--use-cython-trace' in sys.argv:
 
 def my_create_extension(template, kwds):
     name = kwds['name']
+    if 'READTHEDOCS' in os.environ.keys():
+        kwds['libraries'] = None
     if 'include_dirs' not in kwds:
         kwds['include_dirs'] = INCLUDE_PATH
     if USE_CYTHON_TRACE:
