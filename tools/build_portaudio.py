@@ -81,12 +81,16 @@ def main():
     src = PaSource()
     with src:
         with Chdir(src.src_path):
-            p = run_proc(f'./configure --prefix={EXEC_PREFIX}', show_output=True)
+            # p = run_proc(f'./configure --prefix={EXEC_PREFIX}', show_output=True)
             # print(p.stdout.decode('UTF-8'))
-            p = run_proc('make')#, show_output=True)
+            # p = run_proc('make')#, show_output=True)
             # print(p.stdout)
-            p = run_proc('make install', show_output=True)
+            # p = run_proc('make install', show_output=True)
             # print(p.stdout)
+            src_incl = src.src_path / 'include'
+            dst_incl = EXEC_PREFIX / 'include'
+            dst_incl.mkdir()
+            shutil.copytree(str(src_incl), str(dst_incl))
     return EXEC_PREFIX
 
 if __name__ == '__main__':
