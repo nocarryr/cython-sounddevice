@@ -1,4 +1,5 @@
 import sys
+import os
 from setuptools import setup, find_packages
 from Cython.Build import cythonize
 from Cython.Build.Dependencies import default_create_extension
@@ -12,6 +13,14 @@ if numpy is None:
     INCLUDE_PATH = []
 else:
     INCLUDE_PATH = [numpy.get_include()]
+
+def build_pa_lib():
+    from tools import build_portaudio
+    lib_base = build_portaudio.main()
+    INCLUDE_PATH.append(str(lib_base / 'include'))
+
+if 'READTHEDOCS' in os.environ.keys():
+    build_pa_lib()
 
 USE_CYTHON_TRACE = False
 if '--use-cython-trace' in sys.argv:
