@@ -7,7 +7,7 @@ from cysounddevice.types import SampleTime
 # import _test_sample_time
 
 def test_blocks(sample_rate, block_size):
-    max_blocks = 256
+    max_blocks = 128
     # if USE_CYTHON:
     #     _test_sample_time.test_blocks(sample_rate, block_size, max_blocks)
     #     return
@@ -47,7 +47,7 @@ def test_blocks(sample_rate, block_size):
 
 
 def test_time(sample_rate, block_size, SAMPLE_RATES):
-    max_blocks = 256
+    max_blocks = 128
     # if USE_CYTHON:
     #     _test_sample_time.test_time(sample_rate, block_size, max_blocks)
     #     return
@@ -93,7 +93,7 @@ def test_time(sample_rate, block_size, SAMPLE_RATES):
             expected_sample_index += 1
 
 def test_time_offset(sample_rate, block_size):
-    max_blocks = 256
+    max_blocks = 128
     # if USE_CYTHON:
     #     _test_sample_time.test_time_offset(sample_rate, block_size, max_blocks)
     #     return

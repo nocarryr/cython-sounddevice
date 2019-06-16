@@ -15,11 +15,12 @@ def build_signal(fs, length, nchannels, fc=1000):
     return np.asarray(result, dtype='float32')
 
 def test_converters(sample_rate, block_size, sample_format):
-    if sample_format['is_24bit']:
-        return
     # if sample_format['is_signed']:
     #     return
-    bfr_dtype = np.dtype(sample_format['name'])
+    if sample_format['is_24bit']:
+        bfr_dtype = np.dtype('float32')
+    else:
+        bfr_dtype = np.dtype(sample_format['name'])
 
     for nchannels in [1,2,4,8]:
 
@@ -29,7 +30,7 @@ def test_converters(sample_rate, block_size, sample_format):
 
         for fc in [500, 1000, 10000]:
             sig = build_signal(sample_rate, block_size, nchannels)
-
+            sig *= .9
             sig_orig = np.array(sig.tolist(), dtype='float32')
 
             # bfr.pack_buffer_item(sig)

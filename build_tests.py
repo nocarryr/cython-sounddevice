@@ -12,7 +12,7 @@ CPU_COUNT = os.cpu_count()
 if CPU_COUNT is None:
     CPU_COUNT = 0
 
-INCLUDE_PATH = numpy.get_include()
+INCLUDE_PATH = [numpy.get_include()]
 
 CYTHONIZE_CMD = 'cythonize {opts} {pyx_file}'
 
@@ -36,6 +36,7 @@ def cython_compile(path_pattern, options):
             nthreads=options.parallel,
             exclude_failures=options.keep_going,
             exclude=options.excludes,
+            aliases={'NUMPY_INCLUDE':INCLUDE_PATH},
             compiler_directives=options.directives,
             compile_time_env=options.compile_time_env,
             force=options.force,

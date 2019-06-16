@@ -132,9 +132,19 @@ else:
     # INCLUDE_PATH = [NP_INC]
     NP_INC = numpy.get_include()
 
+USE_CYTHON_TRACE = False
+if '--use-cython-trace' in sys.argv:
+    USE_CYTHON_TRACE = True
+    sys.argv.remove('--use-cython-trace')
+
 def my_create_extension(template, kwds):
     # libs = kwds.get('libraries', []) + ["mylib"]
     # kwds['libraries'] = libs
+    name = kwds['name']
+    if USE_CYTHON_TRACE:
+        # avoid using CYTHON_TRACE macro for stream_callback module
+        if 'stream_callback' not in name:
+            kwds['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
     include_dirs = kwds.get('include_dirs', [])
     if BUILD_CONF:
         include_dirs.append(str(BUILD_CONF['incl_dest'].resolve()))

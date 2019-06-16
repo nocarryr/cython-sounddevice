@@ -56,7 +56,7 @@ SampleFormats.sf_uint8.name = b'uint8'
 
 @cython.cdivision(True)
 cdef void init_sample_formats() except *:
-    cdef list names = ['float32', 'int32', 'int16', 'uint8', 'int8']
+    cdef list names = ['float32', 'int32', 'int24', 'int16', 'uint8', 'int8']
     cdef str name
     cdef SampleFormat* sf
     cdef double num_values
@@ -91,6 +91,8 @@ cdef SampleFormat* get_sample_format_by_name(str name) except *:
         return &SampleFormats.sf_float32
     elif 'int32' in name:
         return &SampleFormats.sf_int32
+    elif 'int24' in name:
+        return &SampleFormats.sf_int24
     elif 'int16' in name:
         return &SampleFormats.sf_int16
     elif 'uint8' in name:
