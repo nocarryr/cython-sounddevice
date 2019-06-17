@@ -19,8 +19,10 @@ def build_pa_lib():
     lib_base = build_portaudio.main()
     INCLUDE_PATH.append(str(lib_base / 'include'))
 
-if 'READTHEDOCS' in os.environ.keys():
+RTFD_BUILD = 'READTHEDOCS' in os.environ.keys()
+if RTFD_BUILD:
     build_pa_lib()
+    print('INCLUDE_PATH: ', INCLUDE_PATH)
 
 USE_CYTHON_TRACE = False
 if '--use-cython-trace' in sys.argv:
@@ -29,10 +31,10 @@ if '--use-cython-trace' in sys.argv:
 
 def my_create_extension(template, kwds):
     name = kwds['name']
-    if 'READTHEDOCS' in os.environ.keys():
+    if RTFD_BUILD:
         kwds['libraries'] = None
-    if 'include_dirs' not in kwds:
         kwds['include_dirs'] = INCLUDE_PATH
+        print(kwds)
     if USE_CYTHON_TRACE:
         # avoid using CYTHON_TRACE macro for stream_callback module
         if 'stream_callback' not in name:

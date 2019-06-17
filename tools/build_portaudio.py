@@ -90,6 +90,7 @@ def main():
             src_incl = src.src_path / 'include'
             dst_incl = EXEC_PREFIX / 'include'
             shutil.copytree(str(src_incl), str(dst_incl))
+            run_proc(f'ls -al {dst_incl}', show_output=True)
     return EXEC_PREFIX
 
 if __name__ == '__main__':
