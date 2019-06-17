@@ -14,10 +14,13 @@ if numpy is None:
 else:
     INCLUDE_PATH = [numpy.get_include()]
 
+LIB_PATH = []
+
 def build_pa_lib():
     from tools import build_portaudio
     lib_base = build_portaudio.main()
     INCLUDE_PATH.append(str(lib_base / 'include'))
+    LIB_PATH.append(str(lib_base / 'lib'))
 
 RTFD_BUILD = 'READTHEDOCS' in os.environ.keys()
 if RTFD_BUILD:
@@ -32,7 +35,7 @@ if '--use-cython-trace' in sys.argv:
 def my_create_extension(template, kwds):
     name = kwds['name']
     if RTFD_BUILD:
-        kwds['libraries'] = None
+        kwds['library_dirs'] = LIB_PATH
         kwds['include_dirs'] = INCLUDE_PATH
         print(kwds)
     if USE_CYTHON_TRACE:
