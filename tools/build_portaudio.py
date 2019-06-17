@@ -77,6 +77,19 @@ class PaSource(object):
     def __exit__(self, *args):
         self.close()
 
+def copytree(src_dir, dst_dir):
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    for src_p in src_dir.iterdir():
+        if not src_p.is_file():
+            continue
+        dst_p = dst_dir / src_p.name
+        if dst_p.exists():
+            print(f'{dst_p} exists')
+            continue
+        print(f'{src_p} -> {dst_p}')
+        with src_p.open('rb') as fd:
+            dst_p.write_bytes(fd.read())
+
 def main():
     src = PaSource()
     with src:
@@ -90,6 +103,7 @@ def main():
             src_incl = src.src_path / 'include'
             dst_incl = EXEC_PREFIX / 'include'
             run_proc(f'ls -al {dst_incl}', show_output=True)
+            copytree(src_incl, dst_incl)
     return EXEC_PREFIX
 
 if __name__ == '__main__':
