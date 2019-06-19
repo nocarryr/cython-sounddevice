@@ -1,4 +1,5 @@
 import sys
+import os
 from setuptools import setup, find_packages
 from Cython.Build import cythonize
 from Cython.Build.Dependencies import default_create_extension
@@ -13,6 +14,19 @@ if numpy is None:
 else:
     INCLUDE_PATH = [numpy.get_include()]
 
+LIB_PATH = []
+
+def build_pa_lib():
+    from tools import build_portaudio
+    lib_base = build_portaudio.main()
+    INCLUDE_PATH.append(str(lib_base / 'include'))
+    LIB_PATH.append(str(lib_base / 'lib'))
+
+RTFD_BUILD = 'READTHEDOCS' in os.environ.keys()
+if RTFD_BUILD:
+    build_pa_lib()
+    print('INCLUDE_PATH: ', INCLUDE_PATH)
+
 USE_CYTHON_TRACE = False
 if '--use-cython-trace' in sys.argv:
     USE_CYTHON_TRACE = True
@@ -20,6 +34,11 @@ if '--use-cython-trace' in sys.argv:
 
 def my_create_extension(template, kwds):
     name = kwds['name']
+    if RTFD_BUILD:
+        kwds['library_dirs'] = LIB_PATH
+        kwds['include_dirs'] = INCLUDE_PATH
+        kwds['runtime_library_dirs'] = LIB_PATH
+        print(kwds)
     if USE_CYTHON_TRACE:
         # avoid using CYTHON_TRACE macro for stream_callback module
         if 'stream_callback' not in name:
