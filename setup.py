@@ -37,6 +37,7 @@ def my_create_extension(template, kwds):
     if RTFD_BUILD:
         kwds['library_dirs'] = LIB_PATH
         kwds['include_dirs'] = INCLUDE_PATH
+        kwds['runtime_library_dirs'] = LIB_PATH
         print(kwds)
     if USE_CYTHON_TRACE:
         # avoid using CYTHON_TRACE macro for stream_callback module
