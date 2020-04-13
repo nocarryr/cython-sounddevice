@@ -21,6 +21,9 @@ BLOCK_SIZES_ = (
 )
 
 SAMPLE_FORMATS_ = tuple(types.get_sample_formats().values())
+for sf in SAMPLE_FORMATS_:
+    if isinstance(sf['name'], bytes):
+        sf['name'] = sf['name'].decode('UTF-8')
 
 @pytest.fixture
 def SAMPLE_RATES():
@@ -48,8 +51,6 @@ def sample_format(request):
     sf = request.param
     # print(SAMPLE_FORMATS_)
     # print(sf)
-    if isinstance(sf['name'], bytes):
-        sf['name'] = sf['name'].decode('UTF-8')
     return sf
 
 @pytest.fixture(params=[1,2,4,8])
