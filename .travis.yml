@@ -21,6 +21,6 @@ install:
   - pip install -e .
   - ./build_tests.py
 script:
-  - py.test --cov-config .coveragerc --cov=cysounddevice --boxed
+  - py.test --cov-config .coveragerc --cov=cysounddevice
 after_success:
   - coveralls
