@@ -1,4 +1,5 @@
 import time
+import warnings
 import numpy as np
 from scipy.io import wavfile
 
@@ -179,6 +180,7 @@ def test_record(port_audio, block_size, sample_format, sample_rate):
         stream.check()
     except PortAudioError as exc:
         if exc.error_msg == 'Invalid sample rate':
+            warnings.warn(f'Invalid sample rate ({sample_rate})')
             return
     # assert stream.frames_per_buffer == block_size
     rec = Recorder(stream, RECORD_DURATION)

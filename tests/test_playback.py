@@ -1,4 +1,5 @@
 import time
+import warnings
 import numpy as np
 
 from cysounddevice.types import SampleTime
@@ -100,7 +101,7 @@ def test_playback(port_audio, sample_rate, sample_format, block_size):
         stream.check()
     except PortAudioError as exc:
         if exc.error_msg == 'Invalid sample rate':
-            print(exc)
+            warnings.warn(f'Invalid sample rate ({sample_rate})')
             return
     gen = Generator(stream, DURATION)
     gen.run()
