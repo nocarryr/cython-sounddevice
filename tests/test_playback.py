@@ -86,24 +86,26 @@ class Generator:
         return data
 
 
-def test_playback(port_audio, sample_rate, sample_format, block_size):
-    print(f'fs={sample_rate}, sample_format={sample_format} block_size={block_size}')
-    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
-    device = hostapi.devices[0]
-    stream_kw = dict(
-        sample_rate=sample_rate,
-        block_size=block_size,
-        sample_format=sample_format['name'],
-        output_channels=2,
-    )
-    stream = device.open_stream(**stream_kw)
-    try:
-        stream.check()
-    except PortAudioError as exc:
-        if exc.error_msg == 'Invalid sample rate':
-            warnings.warn(f'Invalid sample rate ({sample_rate})')
-            return
-    gen = Generator(stream, DURATION)
-    gen.run()
-    assert gen.complete
-    device.close_stream()
+def test_playback(port_audio, jack_sample_rate, block_size, SAMPLE_FORMATS):
+    with port_audio(jack_sample_rate, block_size) as pa:
+        hostapi = pa.get_host_api_by_name('JACK Audio Connection Kit')
+        device = hostapi.devices[0]
+        for sample_format in SAMPLE_FORMATS:
+            print(f'fs={jack_sample_rate}, sample_format={sample_format} block_size={block_size}')
+            stream_kw = dict(
+                sample_rate=jack_sample_rate,
+                block_size=block_size,
+                sample_format=sample_format['name'],
+                output_channels=2,
+            )
+            stream = device.open_stream(**stream_kw)
+            try:
+                stream.check()
+            except PortAudioError as exc:
+                if exc.error_msg == 'Invalid sample rate':
+                    warnings.warn(f'Invalid sample rate ({sample_rate})')
+                    return
+            gen = Generator(stream, DURATION)
+            gen.run()
+            assert gen.complete
+            device.close_stream()

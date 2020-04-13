@@ -164,39 +164,41 @@ def recorded_to_wav(filename, sample_rate, sample_data):
     wavfile.write(filename, int(sample_rate), data.T)
 
 
-def test_record(port_audio, block_size, sample_format, sample_rate):
-    # sample_rate = 44100
-    # block_size = 512
-    hostapi = port_audio.get_host_api_by_name('JACK Audio Connection Kit')
-    device = hostapi.devices[0]
-    stream_kw = dict(
-        sample_rate=sample_rate,
-        frames_per_buffer=block_size,
-        sample_format=sample_format['name'],
-        input_channels=2,
-    )
-    stream = device.open_stream(**stream_kw)
-    try:
-        stream.check()
-    except PortAudioError as exc:
-        if exc.error_msg == 'Invalid sample rate':
-            warnings.warn(f'Invalid sample rate ({sample_rate})')
-            return
-    # assert stream.frames_per_buffer == block_size
-    rec = Recorder(stream, RECORD_DURATION)
-    rec.record()
-    assert rec.complete
+def test_record(port_audio, block_size, jack_sample_rate, SAMPLE_FORMATS, worker_id):
+    print(f'test_record: worker={worker_id}')
+    with port_audio(jack_sample_rate, block_size) as pa:
+        hostapi = pa.get_host_api_by_name('JACK Audio Connection Kit')
+        device = hostapi.devices[0]
+        for sample_format in SAMPLE_FORMATS:
+            print(f'fs={jack_sample_rate}, sample_format={sample_format} block_size={block_size}')
+            stream_kw = dict(
+                sample_rate=jack_sample_rate,
+                frames_per_buffer=block_size,
+                sample_format=sample_format['name'],
+                input_channels=2,
+            )
+            stream = device.open_stream(**stream_kw)
+            try:
+                stream.check()
+            except PortAudioError as exc:
+                if exc.error_msg == 'Invalid sample rate':
+                    warnings.warn(f'Invalid sample rate ({jack_sample_rate})')
+                    return
+            # assert stream.frames_per_buffer == block_size
+            rec = Recorder(stream, RECORD_DURATION)
+            rec.record()
+            assert rec.complete
 
-    ix = np.flatnonzero(np.greater(rec.block_data['pa_time'], 0))
-    block_data = rec.block_data[ix]
-    assert block_data.size >= rec.end_time.block - 1
+            ix = np.flatnonzero(np.greater(rec.block_data['pa_time'], 0))
+            block_data = rec.block_data[ix]
+            assert block_data.size >= rec.end_time.block - 1
 
-    expected_sample_index = np.arange(rec.block_data.size) * block_size
-    expected_sample_index = expected_sample_index[ix]
-    _bad_samp_ix = np.flatnonzero(np.not_equal(block_data['sample_index'], expected_sample_index))
-    bad_blocks = np.unique(_bad_samp_ix)
-    # if bad_blocks.size > 0:
-    #     samp_ix_diff = expected_sample_index - block_data['sample_index']
-    #     print(samp_ix_diff)
-    assert bad_blocks.size == 0
-    device.close_stream()
+            expected_sample_index = np.arange(rec.block_data.size) * block_size
+            expected_sample_index = expected_sample_index[ix]
+            _bad_samp_ix = np.flatnonzero(np.not_equal(block_data['sample_index'], expected_sample_index))
+            bad_blocks = np.unique(_bad_samp_ix)
+            # if bad_blocks.size > 0:
+            #     samp_ix_diff = expected_sample_index - block_data['sample_index']
+            #     print(samp_ix_diff)
+            assert bad_blocks.size == 0
+            device.close_stream()
