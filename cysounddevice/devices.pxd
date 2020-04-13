@@ -30,6 +30,7 @@ cdef class HostApiInfo:
     cdef void _add_device(self, DeviceInfo device) except *
 
 cdef class PortAudio:
+    cdef char* jack_client_name_ptr
     cdef dict devices_by_paindex, devices_by_name
     cdef dict host_apis_by_paindex, host_apis_by_name
     cdef readonly bint _initialized

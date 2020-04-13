@@ -201,6 +201,9 @@ cdef extern from "portaudio.h":
     PaError Pa_GetSampleSize( PaSampleFormat format )
     void Pa_Sleep( long msec )
 
+cdef extern from "pa_jack.h":
+    PaError PaJack_SetClientName( const char* name )
+    PaError PaJack_GetClientName(const char** clientName)
 
 IF UNAME_SYSNAME == "Darwin":
     cdef extern from "pa_mac_core.h":

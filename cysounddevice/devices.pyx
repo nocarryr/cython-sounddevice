@@ -1,5 +1,7 @@
 # cython: language_level=3
 
+from libc.string cimport strcpy, strlen
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 cimport cython
 
 import atexit
@@ -132,6 +134,12 @@ cdef class PortAudio:
         default_output (DeviceInfo): The :class:`~DeviceInfo` instance for the default output
     """
     def __cinit__(self):
+        cdef char* jack_client_name = 'PortAudio'
+        self.jack_client_name_ptr = <char*>PyMem_Malloc(sizeof(char) * (strlen(jack_client_name)+1))
+        if not self.jack_client_name_ptr:
+            raise MemoryError()
+        strcpy(self.jack_client_name_ptr, jack_client_name)
+
         self.devices_by_paindex = {}
         self.devices_by_name = {}
         self.host_apis_by_paindex = {}
@@ -139,12 +147,36 @@ cdef class PortAudio:
         self._initialized = False
     def __init__(self, *args):
         atexit.register(self.close)
+    def __dealloc__(self):
+        if self.jack_client_name_ptr:
+            PyMem_Free(self.jack_client_name_ptr)
     @property
     def host_apis(self):
         return list(self.iter_hostapis())
     @property
     def devices(self):
         return list(self.iter_devices())
+
+    def set_jack_client_name(self, str name):
+        """Set the name of the JACK Client created by PortAudio
+
+        If not changed, the default is 'PortAudio'
+
+        Note:
+            This cannot be called after PortAudio has been initialized by
+            :meth:`open`
+        """
+        if self._initialized:
+            raise Exception('Cannot set name after initialized')
+        bname = name.encode('UTF-8')
+        cdef char* cname = bname
+        if self.jack_client_name_ptr:
+            PyMem_Free(self.jack_client_name_ptr)
+        self.jack_client_name_ptr = <char*>PyMem_Malloc(sizeof(char) * (strlen(cname)+1))
+        if not self.jack_client_name_ptr:
+            raise MemoryError()
+        strcpy(self.jack_client_name_ptr, cname)
+
     cpdef open(self):
         """Initialize the PortAudio library and gather HostApi and Device info
 
@@ -154,6 +186,7 @@ cdef class PortAudio:
         if self._initialized:
             return
         self._initialized = True
+        handle_error(PaJack_SetClientName(self.jack_client_name_ptr))
         handle_error(Pa_Initialize())
         self._get_info()
     cpdef close(self):
