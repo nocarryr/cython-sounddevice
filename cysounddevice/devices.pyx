@@ -43,6 +43,11 @@ cdef class DeviceInfo:
         return self.stream
     def open_stream(self, **kwargs):
         return self._open_stream(kwargs)
+    def close_stream(self):
+        if self.stream is not None:
+            self.stream.close()
+            self.stream = None
+        self.active = False
     cpdef close(self):
         """Close the device if active
         """

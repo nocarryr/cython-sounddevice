@@ -106,3 +106,4 @@ def test_playback(port_audio, sample_rate, sample_format, block_size):
     gen = Generator(stream, DURATION)
     gen.run()
     assert gen.complete
+    device.close_stream()

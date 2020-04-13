@@ -199,3 +199,4 @@ def test_record(port_audio, block_size, sample_format, sample_rate):
     #     samp_ix_diff = expected_sample_index - block_data['sample_index']
     #     print(samp_ix_diff)
     assert bad_blocks.size == 0
+    device.close_stream()
