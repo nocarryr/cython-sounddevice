@@ -7,7 +7,7 @@ cimport cython
 import atexit
 
 from cysounddevice.pawrapper cimport *
-from cysounddevice.utils cimport handle_error
+from cysounddevice.utils cimport handle_pa_error
 
 cdef class DeviceInfo:
     """Container for information about particular device
@@ -186,8 +186,8 @@ cdef class PortAudio:
         if self._initialized:
             return
         self._initialized = True
-        handle_error(PaJack_SetClientName(self.jack_client_name_ptr))
-        handle_error(Pa_Initialize())
+        handle_pa_error(PaJack_SetClientName(self.jack_client_name_ptr))
+        handle_pa_error(Pa_Initialize())
         self._get_info()
     cpdef close(self):
         """Close all streams and terminates the PortAudio library
@@ -209,7 +209,7 @@ cdef class PortAudio:
         self.host_apis_by_name.clear()
         self.devices_by_name.clear()
         self.devices_by_paindex.clear()
-        handle_error(Pa_Terminate())
+        handle_pa_error(Pa_Terminate())
     def __enter__(self):
         self.open()
         return self

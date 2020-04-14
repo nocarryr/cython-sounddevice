@@ -3,7 +3,7 @@
 cimport cython
 
 from cysounddevice.pawrapper cimport *
-from cysounddevice.utils cimport handle_error
+from cysounddevice.utils cimport handle_pa_error
 from cysounddevice.devices cimport DeviceInfo
 from cysounddevice.types cimport *
 from cysounddevice.stream_callback cimport StreamCallback, CallbackUserData
@@ -115,7 +115,7 @@ cdef class Stream:
             self.sample_rate,
         )
         if err != 0:
-            handle_error(err)
+            handle_pa_error(err)
         return err
     cpdef check_active(self):
         cdef PaError err
@@ -131,7 +131,7 @@ cdef class Stream:
                 active = False
                 self._pa_stream_ptr = NULL
             else:
-                handle_error(err)
+                handle_pa_error(err)
         return active
     cpdef open(self):
         """Open the stream and begin audio processing
@@ -151,7 +151,7 @@ cdef class Stream:
         ))
         self.callback_handler._build_user_data()
         cdef CallbackUserData* user_data = self.callback_handler.user_data
-        handle_error(Pa_OpenStream(
+        handle_pa_error(Pa_OpenStream(
             &ptr,
             pa_input_params,
             pa_output_params,
@@ -174,7 +174,7 @@ cdef class Stream:
         self._pa_stream_ptr = ptr
         cdef PaError err = Pa_StartStream(ptr)
         if err != paStreamIsNotStopped:
-            handle_error(err)
+            handle_pa_error(err)
         self.starting = False
         # print('waiting...')
         # Pa_Sleep(5000)
@@ -194,7 +194,7 @@ cdef class Stream:
             Pa_AbortStream(ptr)
 
         self._pa_stream_ptr = NULL
-        # handle_error(Pa_StopStream(self._pa_stream_ptr))
+        # handle_pa_error(Pa_StopStream(self._pa_stream_ptr))
         # print('stopped')
         self.callback_handler._free_user_data()
         print('closed')

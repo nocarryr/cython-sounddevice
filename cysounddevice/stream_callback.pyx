@@ -133,8 +133,7 @@ cdef class StreamCallback:
         if self.user_data:
             user_data = self.user_data
             if user_data.error_status != CallbackError_none:
-                with gil:
-                    raise_stream_callback_error(user_data)
+                raise_stream_callback_error(user_data)
         return 0
 
 @cython.boundscheck(False)
@@ -198,7 +197,7 @@ cdef int _stream_callback(const void* in_bfr,
         samp_bfr.current_block += 1
     return paContinue
 
-cdef raise_stream_callback_error(CallbackUserData* user_data):
+cdef int raise_stream_callback_error(CallbackUserData* user_data) except -1 with gil:
     cdef PaStreamCallbackFlags cb_flags = user_data.last_callback_flags
     cdef object msg = None
     if user_data.error_status == CallbackError_flags:
@@ -212,15 +211,16 @@ cdef raise_stream_callback_error(CallbackUserData* user_data):
         if cb_flags & 8:
             msgs.append('Output Overflow')
         if not len(msgs):
-            return
+            return 0
         msg = ', '.join(msgs)
     elif user_data.error_status == CallbackError_input_aborted:
         msg = 'Input Aborted'
     elif user_data.error_status == CallbackError_output_aborted:
         msg = 'Output Aborted'
     else:
-        return
+        return 0
     warnings.warn(StreamCallbackError(msg))
+    return 0
 
 cdef void callback_user_data_destroy(CallbackUserData* user_data) except *:
     if user_data.in_buffer != NULL:

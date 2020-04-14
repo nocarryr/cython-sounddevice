@@ -3,13 +3,15 @@
 # TODO: Endian-ness should be checked at compilation time
 DEF LITTLE_ENDIAN = True
 
+from cysounddevice.utils cimport raise_withgil, PyExc_ValueError
+
 # -----------------------------------------------------------------------------
 # Convert from 2-dimensional float32 array/memoryview into flattened values
 # scaled for the SampleBuffer's sample_format, then pack them
 # into the BufferItem's char buffer.
 # -----------------------------------------------------------------------------
 
-cdef void pack_buffer_item(BufferItem* item, float[:,:] src) nogil:
+cdef int pack_buffer_item(BufferItem* item, float[:,:] src) nogil except -1:
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     if fmt.pa_ident == paFloat32:
         pack_float32(item, src)
@@ -24,8 +26,8 @@ cdef void pack_buffer_item(BufferItem* item, float[:,:] src) nogil:
     elif fmt.pa_ident == paUInt8:
         pack_uint8(item, src)
     else:
-        with gil:
-            raise Exception('Unsupported format')
+        raise_withgil(PyExc_ValueError, 'Unsupported format')
+    return 0
 
 cdef void pack_float32(BufferItem* item, float[:,:] src) nogil:
     cdef Py_ssize_t i, chan_ix, chan_num
@@ -149,7 +151,7 @@ cdef void pack_uint8(BufferItem* item, float[:,:] src) nogil:
 # placing the results into a 2-dimensional array/memoryview.
 # -----------------------------------------------------------------------------
 
-cdef void unpack_buffer_item(BufferItem* item, float[:,:] dest) nogil:
+cdef int unpack_buffer_item(BufferItem* item, float[:,:] dest) nogil except -1:
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     if fmt.pa_ident == paFloat32:
         unpack_float32(item, dest)
@@ -164,8 +166,8 @@ cdef void unpack_buffer_item(BufferItem* item, float[:,:] dest) nogil:
     elif fmt.pa_ident == paUInt8:
         unpack_uint8(item, dest)
     else:
-        with gil:
-            raise Exception('Unsupported format')
+        raise_withgil(PyExc_ValueError, 'Unsupported format')
+    return 0
 
 cdef void unpack_float32(BufferItem* item, float[:,:] dest) nogil:
     cdef Py_ssize_t i, chan_ix, chan_num
