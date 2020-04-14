@@ -4,25 +4,7 @@ from cysounddevice.pawrapper cimport *
 from cysounddevice.types cimport *
 from cysounddevice.devices cimport DeviceInfo
 from cysounddevice.buffer cimport *
-
-cdef enum CallbackErrorStatus:
-    CallbackError_none
-    CallbackError_flags
-    CallbackError_input_aborted
-    CallbackError_output_aborted
-
-cdef struct CallbackUserData:
-    int input_channels
-    int output_channels
-    SampleBuffer* in_buffer
-    SampleBuffer* out_buffer
-    # SampleFormat* sample_format
-    PaTime firstInputAdcTime
-    PaTime firstOutputDacTime
-    PaStreamCallbackFlags last_callback_flags
-    CallbackErrorStatus error_status
-    bint exit_signal
-    bint stream_exit_complete
+from cysounddevice.stream_callback cimport StreamCallback, CallbackUserData
 
 cdef class Stream:
     cdef readonly DeviceInfo device
@@ -58,18 +40,3 @@ cdef class StreamInfo:
     cdef PaStreamParameters* get_output_params(self)
     cdef void _update_from_pa_stream_info(self, const PaStreamInfo* info) except *
     cdef void _update_pa_data(self) except *
-
-cdef class StreamCallback:
-    cdef PaStreamCallbackFlags _pa_flags
-    cdef PaStreamCallback* _pa_callback_ptr
-    cdef readonly Stream stream
-    cdef CallbackUserData* user_data
-    cdef readonly SampleTime sample_time
-    cdef public bint input_underflow, input_overflow
-    cdef public bint output_underflow, output_overflow, priming_output
-
-    cdef void _build_user_data(self, Py_ssize_t buffer_len=*) except *
-    cdef void _free_user_data(self) except *
-    cdef void _send_exit_signal(self, float timeout) except *
-    cdef void _update_pa_data(self) except *
-    cdef int check_callback_errors(self) nogil except -1

@@ -40,9 +40,8 @@ def my_create_extension(template, kwds):
         kwds['runtime_library_dirs'] = LIB_PATH
         print(kwds)
     if USE_CYTHON_TRACE:
-        # avoid using CYTHON_TRACE macro for stream_callback module
-        if 'stream_callback' not in name:
-            kwds['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
+        kwds['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
+
     return default_create_extension(template, kwds)
 
 ext_modules = cythonize(
