@@ -1,4 +1,5 @@
 pytest
+coverage<5.0
 pytest-cov
 pytest-xdist
 coveralls
