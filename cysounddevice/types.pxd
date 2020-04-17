@@ -42,6 +42,8 @@ cdef struct SampleFormat:
     double max_value
     double ptp_value
     double float32_multiplier
+    double float32_divisor
+    double float32_max
     char* name
 
 ctypedef struct SampleFormats_s:

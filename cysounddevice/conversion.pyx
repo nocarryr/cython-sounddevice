@@ -13,6 +13,7 @@ from cysounddevice.utils cimport raise_withgil, PyExc_ValueError
 
 cdef int pack_buffer_item(BufferItem* item, float[:,:] src) nogil except -1:
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
+
     if fmt.pa_ident == paFloat32:
         pack_float32(item, src)
     elif fmt.pa_ident == paInt32:
@@ -30,121 +31,98 @@ cdef int pack_buffer_item(BufferItem* item, float[:,:] src) nogil except -1:
     return 0
 
 cdef void pack_float32(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef FLOAT32_DTYPE_t *data_view = <FLOAT32_DTYPE_t *>item.bfr
-    chan_ix = 0
-    chan_num = 0
-    i = 0
+
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            data_view[i] = src[chan_num,chan_ix]
-            i += 1
+            data_view[0] = src[chan_num,chan_ix]
+            data_view += 1
 
 cdef void pack_sint32(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT32_DTYPE_t *data_view = <INT32_DTYPE_t *>item.bfr
-    cdef double multiplier = fmt.ptp_value / 2.0
+    cdef double multiplier = fmt.float32_divisor
+    cdef double float32_max = fmt.float32_max
     cdef double value
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            value = src[chan_num,chan_ix] * multiplier
-            if value > fmt.max_value:
-                value = fmt.max_value
-            elif value < fmt.min_value:
-                value = fmt.min_value
-            data_view[i] = <INT32_DTYPE_t>value
-            i += 1
+            value = src[chan_num,chan_ix]
+            if value > float32_max:
+                value = float32_max
+
+            data_view[0] = <INT32_DTYPE_t>(value*multiplier)
+            data_view += 1
 
 
 cdef void pack_sint24(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t chan_ix, chan_num, bfr_ix
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef unsigned char *bfr = <unsigned char *>item.bfr
-    cdef double multiplier = 2147483648.0  # 2 ** 32 / 2
-    cdef double value
+    cdef double multiplier = fmt.float32_divisor
     cdef int32_t packed_value
 
-    chan_ix = 0
-    chan_num = 0
-    bfr_ix = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            value = <double>src[chan_num,chan_ix] * multiplier
-            packed_value = <int32_t>value
+            packed_value = <int32_t>(src[chan_num,chan_ix] * multiplier)
             IF LITTLE_ENDIAN:
-                bfr[bfr_ix+0] = <unsigned char>(packed_value >> 8)
-                bfr[bfr_ix+1] = <unsigned char>(packed_value >> 16)
-                bfr[bfr_ix+2] = <unsigned char>(packed_value >> 24)
+                bfr[0] = <unsigned char>(packed_value >> 8)
+                bfr[1] = <unsigned char>(packed_value >> 16)
+                bfr[2] = <unsigned char>(packed_value >> 24)
             ELSE:
-                bfr[bfr_ix+2] = <unsigned char>(packed_value >> 8)
-                bfr[bfr_ix+1] = <unsigned char>(packed_value >> 16)
-                bfr[bfr_ix+0] = <unsigned char>(packed_value >> 24)
-            bfr_ix += 3
+                bfr[2] = <unsigned char>(packed_value >> 8)
+                bfr[1] = <unsigned char>(packed_value >> 16)
+                bfr[0] = <unsigned char>(packed_value >> 24)
+            bfr += 3
 
 cdef void pack_sint16(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT16_DTYPE_t *data_view = <INT16_DTYPE_t *>item.bfr
-    cdef double multiplier = fmt.ptp_value / 2.0
+    cdef double multiplier = fmt.float32_divisor
+    cdef double float32_max = fmt.float32_max
     cdef double value
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            value = src[chan_num,chan_ix] * multiplier
-            if value > fmt.max_value:
-                value = fmt.max_value
-            elif value < fmt.min_value:
-                value = fmt.min_value
-            data_view[i] = <INT16_DTYPE_t>value
-            i += 1
+            value = src[chan_num,chan_ix]
+            if value > float32_max:
+                value = float32_max
+            data_view[0] = <INT16_DTYPE_t>(value*multiplier)
+            data_view += 1
 
 cdef void pack_sint8(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT8_DTYPE_t *data_view = <INT8_DTYPE_t *>item.bfr
-    cdef double multiplier = fmt.ptp_value / 2.0
+    cdef double multiplier = fmt.float32_divisor
+    cdef double float32_max = fmt.float32_max
     cdef double value
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            value = src[chan_num,chan_ix] * multiplier
-            if value > fmt.max_value:
-                value = fmt.max_value
-            elif value < fmt.min_value:
-                value = fmt.min_value
-            data_view[i] = <INT8_DTYPE_t>value
-            i += 1
+            value = src[chan_num,chan_ix]
+            if value > float32_max:
+                value = float32_max
+            data_view[0] = <INT8_DTYPE_t>(value*multiplier)
+            data_view += 1
 
 cdef void pack_uint8(BufferItem* item, float[:,:] src) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef UINT8_DTYPE_t *data_view = <UINT8_DTYPE_t *>item.bfr
+    cdef double float32_max = fmt.float32_max
     cdef double value
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            value = (src[chan_num,chan_ix] + 1.0) / 2.0 * 256
-
-            if value > fmt.max_value:
-                value = fmt.max_value
-            elif value < fmt.min_value:
-                value = fmt.min_value
-            data_view[i] = <UINT8_DTYPE_t>value
-            i += 1
+            value = src[chan_num,chan_ix]
+            if value > float32_max:
+                value = float32_max
+            data_view[0] = <UINT8_DTYPE_t>((value+1.0)*128)
+            data_view += 1
 
 # -----------------------------------------------------------------------------
 # Unpack the BufferItem's char buffer and scale the values to float32,
@@ -170,97 +148,74 @@ cdef int unpack_buffer_item(BufferItem* item, float[:,:] dest) nogil except -1:
     return 0
 
 cdef void unpack_float32(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef FLOAT32_DTYPE_t *data_view = <FLOAT32_DTYPE_t *>item.bfr
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            dest[chan_num,chan_ix] = data_view[i]
-            i += 1
+            dest[chan_num,chan_ix] = data_view[0]
+            data_view += 1
 
 cdef void unpack_sint32(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT32_DTYPE_t *data_view = <INT32_DTYPE_t *>item.bfr
+    cdef double multiplier = fmt.float32_multiplier
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            dest[chan_num,chan_ix] = <float>data_view[i] * fmt.float32_multiplier
-            i += 1
+            dest[chan_num,chan_ix] = <float>data_view[0] * multiplier
+            data_view += 1
 
 cdef void unpack_sint24(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t bfr_ix, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef unsigned char *bfr = <unsigned char *>item.bfr
-    cdef double multiplier = 1 / 2147483648.0  # 2 ** 32 / 2
+    cdef double multiplier = fmt.float32_multiplier
     cdef int32_t unpacked
 
-    chan_ix = 0
-    chan_num = 0
-    bfr_ix = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
             IF LITTLE_ENDIAN:
-                unpacked =  ((<int32_t>bfr[bfr_ix+0]) << 8)
-                unpacked |= ((<int32_t>bfr[bfr_ix+1]) << 16)
-                unpacked |= ((<int32_t>bfr[bfr_ix+2]) << 24)
+                unpacked =  ((<int32_t>bfr[0]) << 8)
+                unpacked |= ((<int32_t>bfr[1]) << 16)
+                unpacked |= ((<int32_t>bfr[2]) << 24)
             ELSE:
-                unpacked =  <int32_t>bfr[bfr_ix+2] << 8
-                unpacked |= <int32_t>bfr[bfr_ix+1] << 16
-                unpacked |= <int32_t>bfr[bfr_ix+0] << 24
-            dest[chan_num,chan_ix] = <float>(<double>unpacked * multiplier)
-            bfr_ix += 3
+                unpacked =  <int32_t>bfr[2] << 8
+                unpacked |= <int32_t>bfr[1] << 16
+                unpacked |= <int32_t>bfr[0] << 24
+            dest[chan_num,chan_ix] = unpacked * multiplier
+            bfr += 3
 
 cdef void unpack_sint16(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT16_DTYPE_t *data_view = <INT16_DTYPE_t *>item.bfr
+    cdef double multiplier = fmt.float32_multiplier
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            dest[chan_num,chan_ix] = <float>data_view[i] * fmt.float32_multiplier
-            i += 1
+            dest[chan_num,chan_ix] = data_view[0] * multiplier
+            data_view += 1
 
 cdef void unpack_sint8(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef INT8_DTYPE_t *data_view = <INT8_DTYPE_t *>item.bfr
+    cdef double multiplier = fmt.float32_multiplier
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            dest[chan_num,chan_ix] = <float>data_view[i] * fmt.float32_multiplier
-            i += 1
+            dest[chan_num,chan_ix] = data_view[0] * multiplier
+            data_view += 1
 
 cdef void unpack_uint8(BufferItem* item, float[:,:] dest) nogil:
-    cdef Py_ssize_t i, chan_ix, chan_num
+    cdef Py_ssize_t chan_ix, chan_num
     cdef SampleFormat* fmt = item.parent_buffer.sample_format
     cdef UINT8_DTYPE_t *data_view = <UINT8_DTYPE_t *>item.bfr
-    cdef float value
+    cdef double multiplier = fmt.float32_multiplier
 
-    chan_ix = 0
-    chan_num = 0
-    i = 0
     for chan_ix in range(item.length):
         for chan_num in range(item.nchannels):
-            # value = <float>data_view[i] / 128.0 - 1.0
-            value = <float>data_view[i] / 256
-            value = value * 2.0 - 1.0
-            # value = <float>data_view[i] - 128
-            # value *= fmt.float32_multiplier
-            # value = <float>data_view[i] * fmt.float32_multiplier
-            # value -= 1.0
-
-            dest[chan_num,chan_ix] = value
-            i += 1
+            dest[chan_num,chan_ix] = (data_view[0] - 128) * multiplier * 2
+            data_view += 1

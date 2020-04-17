@@ -5,6 +5,7 @@ import numbers
 
 
 # cdef SampleFormats_s SampleFormats
+cdef double INT32_MAXVAL = <double>2**32
 
 SampleFormats.sf_float32.pa_ident = paFloat32
 SampleFormats.sf_float32.bit_width = 32
@@ -12,6 +13,12 @@ SampleFormats.sf_float32.is_signed = True
 SampleFormats.sf_float32.is_float = True
 SampleFormats.sf_float32.is_24bit = False
 SampleFormats.sf_float32.name = b'float32'
+SampleFormats.sf_float32.min_value = -1.0
+SampleFormats.sf_float32.max_value = 1.0
+SampleFormats.sf_float32.ptp_value = 2.0
+SampleFormats.sf_float32.float32_multiplier = 1.0
+SampleFormats.sf_float32.float32_divisor = 1.0
+SampleFormats.sf_float32.float32_max = 1.0
 # SampleFormats.sf_float32.dtype_ptr = <void*>FLOAT32_DTYPE_t
 
 SampleFormats.sf_int32.pa_ident = paInt32
@@ -20,6 +27,12 @@ SampleFormats.sf_int32.is_signed = True
 SampleFormats.sf_int32.is_float = False
 SampleFormats.sf_int32.is_24bit = False
 SampleFormats.sf_int32.name = b'int32'
+SampleFormats.sf_int32.ptp_value = INT32_MAXVAL
+SampleFormats.sf_int32.min_value = INT32_MAXVAL / -2
+SampleFormats.sf_int32.max_value = (INT32_MAXVAL / 2) - 1
+SampleFormats.sf_int32.float32_multiplier = 1. / (INT32_MAXVAL / 2.)
+SampleFormats.sf_int32.float32_divisor = INT32_MAXVAL / 2.
+SampleFormats.sf_int32.float32_max = SampleFormats.sf_int32.max_value * SampleFormats.sf_int32.float32_multiplier
 # SampleFormats.sf_int32.dtype_ptr = <void*>INT32_DTYPE_t
 
 SampleFormats.sf_int24.pa_ident = paInt24
@@ -28,6 +41,12 @@ SampleFormats.sf_int24.is_signed = True
 SampleFormats.sf_int24.is_float = False
 SampleFormats.sf_int24.is_24bit = True
 SampleFormats.sf_int24.name = b'int24'
+SampleFormats.sf_int24.ptp_value = INT32_MAXVAL
+SampleFormats.sf_int24.min_value = INT32_MAXVAL / -2
+SampleFormats.sf_int24.max_value = (INT32_MAXVAL / 2) - 1
+SampleFormats.sf_int24.float32_multiplier = 1. / (INT32_MAXVAL / 2.)
+SampleFormats.sf_int24.float32_divisor = INT32_MAXVAL / 2.
+SampleFormats.sf_int24.float32_max = SampleFormats.sf_int24.max_value * SampleFormats.sf_int24.float32_multiplier
 # SampleFormats.sf_int24.dtype_ptr = <void*>INT24_DTYPE_t
 
 SampleFormats.sf_int16.pa_ident = paInt16
@@ -36,6 +55,12 @@ SampleFormats.sf_int16.is_signed = True
 SampleFormats.sf_int16.is_float = False
 SampleFormats.sf_int16.is_24bit = False
 SampleFormats.sf_int16.name = b'int16'
+SampleFormats.sf_int16.ptp_value = 65536
+SampleFormats.sf_int16.min_value = -32768
+SampleFormats.sf_int16.max_value = 32767
+SampleFormats.sf_int16.float32_multiplier = 1. / 32768
+SampleFormats.sf_int16.float32_divisor = 32768.
+SampleFormats.sf_int16.float32_max = 32767. * (1./32768)
 # SampleFormats.sf_int16.dtype_ptr = <void*>INT16_DTYPE_t
 
 SampleFormats.sf_int8.pa_ident = paInt8
@@ -44,6 +69,12 @@ SampleFormats.sf_int8.is_signed = True
 SampleFormats.sf_int8.is_float = False
 SampleFormats.sf_int8.is_24bit = False
 SampleFormats.sf_int8.name = b'int8'
+SampleFormats.sf_int8.ptp_value = 256
+SampleFormats.sf_int8.min_value = -128
+SampleFormats.sf_int8.max_value = 127
+SampleFormats.sf_int8.float32_multiplier = 1. / 128
+SampleFormats.sf_int8.float32_divisor = 128.
+SampleFormats.sf_int8.float32_max = 127. * (1./128)
 # SampleFormats.sf_int8.dtype_ptr = <void*>INT8_DTYPE_t
 
 SampleFormats.sf_uint8.pa_ident = paUInt8
@@ -52,33 +83,14 @@ SampleFormats.sf_uint8.is_signed = False
 SampleFormats.sf_uint8.is_float = False
 SampleFormats.sf_uint8.is_24bit = False
 SampleFormats.sf_uint8.name = b'uint8'
+SampleFormats.sf_uint8.ptp_value = 256
+SampleFormats.sf_uint8.min_value = 0
+SampleFormats.sf_uint8.max_value = 255
+SampleFormats.sf_uint8.float32_multiplier = 1. / 256
+SampleFormats.sf_uint8.float32_divisor = 128.
+SampleFormats.sf_uint8.float32_max = 255. * (1./256)
 # SampleFormats.sf_uint8.dtype_ptr = <void*>UINT8_DTYPE_t
 
-@cython.cdivision(True)
-cdef void init_sample_formats() except *:
-    cdef list names = ['float32', 'int32', 'int24', 'int16', 'uint8', 'int8']
-    cdef str name
-    cdef SampleFormat* sf
-    cdef double num_values
-
-    for name in names:
-        sf = get_sample_format_by_name(name)
-        if not sf.bit_width > 0:
-            continue
-        if sf.is_float:
-            sf.min_value = -1.0
-            sf.max_value = 1.0
-            sf.ptp_value = 2.0
-            sf.float32_multiplier = 1.0
-        else:
-            sf.ptp_value = 2 ** sf.bit_width
-            sf.float32_multiplier = 1.0 / (sf.ptp_value / 2.0)
-            if sf.is_signed:
-                sf.min_value = sf.ptp_value / -2
-                sf.max_value = sf.ptp_value / 2 - 1
-            else:
-                sf.min_value = 0
-                sf.max_value = sf.ptp_value - 1
 
 
 cdef dict sample_format_to_dict(SampleFormat* sf):
@@ -135,7 +147,6 @@ cdef SampleFormat* get_sample_format_by_kwargs(dict kwargs) except *:
 def get_sample_formats():
     return SampleFormats
 
-init_sample_formats()
 
 cdef void copy_sample_time_struct(SampleTime_s* ptr_from, SampleTime_s* ptr_to) nogil:
     ptr_to.pa_time = ptr_from.pa_time
