@@ -272,7 +272,7 @@ cdef class SampleTime:
         sample_index (int): Overall sample index calculated from :attr:`block`
             and :attr:`block_index` as ``block * block_size + block_index``
     """
-    def __cinit__(self, BLOCK_t block, Py_ssize_t block_index, Py_ssize_t block_size, SAMPLE_RATE_t sample_rate):
+    def __cinit__(self, BLOCK_t block, Py_ssize_t block_index, Py_ssize_t block_size, SAMPLE_RATE_t sample_rate, *args, **kwargs):
         self.data.sample_rate = sample_rate
         self.data.block_size = block_size
         self.data.pa_time = 0
@@ -280,15 +280,13 @@ cdef class SampleTime:
         self.data.time_offset = 0
         self.data.block = block
         self.data.block_index = block_index
-        SampleTime_set_block_vars(&self.data, block, block_index)
-
-    def __init__(self, *args):
-        assert self.sample_rate > 0
-        assert self.block_size > 0
+        is_from_struct = kwargs.get('is_from_struct', False)
+        if not is_from_struct:
+            SampleTime_set_block_vars(&self.data, block, block_index)
 
     @staticmethod
     cdef SampleTime from_struct(SampleTime_s* data):
-        cdef SampleTime obj = SampleTime(0, 0, data.block_size, data.sample_rate)
+        cdef SampleTime obj = SampleTime(0, 0, data.block_size, data.sample_rate, is_from_struct=True)
         copy_sample_time_struct(data, &obj.data)
         return obj
 
