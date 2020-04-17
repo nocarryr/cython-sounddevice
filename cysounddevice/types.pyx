@@ -408,20 +408,12 @@ cdef class SampleTime:
         return result
 
     def __add__(SampleTime self, other):
-        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
-            return NotImplemented
         return self._handle_op(other, Operation.OP_add)
     def __sub__(SampleTime self, other):
-        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
-            return NotImplemented
         return self._handle_op(other, Operation.OP_sub)
     def __iadd__(SampleTime self, other):
-        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
-            return NotImplemented
         return self._handle_op(other, Operation.OP_iadd)
     def __isub__(SampleTime self, other):
-        if not isinstance(other, SampleTime) and not isinstance(other, numbers.Number):
-            return NotImplemented
         return self._handle_op(other, Operation.OP_isub)
     def __richcmp__(SampleTime self, other, int op):
         cdef PaTime self_t, oth_t
