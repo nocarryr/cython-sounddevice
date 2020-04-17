@@ -4,6 +4,8 @@
 import numpy as np
 cimport numpy as np
 
+cimport cython
+
 from cysounddevice.types cimport *
 from cysounddevice cimport buffer
 from cysounddevice.buffer cimport SampleBuffer, BufferItem
@@ -51,15 +53,33 @@ cdef class BufferWrapper:
         self.unpack_buffer_item_view(dest)
         return dest
 
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     cpdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] pack_and_unpack_item(self, float[:,:] src):
         cdef BufferItem* item = self.buffer_item
         cdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] dest = np.empty(
             (item.nchannels, item.length), dtype='float32',
         )
         cdef float[:,:] dest_view = dest
-        with nogil:
-            conversion.pack_buffer_item(item, src)
-            conversion.unpack_buffer_item(item, dest_view)
+
+        conversion.pack_buffer_item(item, src)
+        conversion.unpack_buffer_item(item, dest_view)
+        return dest
+
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
+    cpdef np.ndarray[FLOAT32_DTYPE_t, ndim=2] pack_and_unpack_items(self, float[:,:,:] src):
+        cdef Py_ssize_t nblocks = src.shape[1]
+        cdef BufferItem* item = self.buffer_item
+        cdef np.ndarray[FLOAT32_DTYPE_t, ndim=3] dest = np.empty(
+            (item.nchannels, nblocks, item.length), dtype='float32',
+        )
+        cdef float[:,:,:] dest_view = dest
+        cdef Py_ssize_t i
+
+        for i in range(nblocks):
+            conversion.pack_buffer_item(item, src[:,i,:])
+            conversion.unpack_buffer_item(item, dest_view[:,i,:])
         return dest
 
 
