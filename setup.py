@@ -32,6 +32,14 @@ if '--use-cython-trace' in sys.argv:
     USE_CYTHON_TRACE = True
     sys.argv.remove('--use-cython-trace')
 
+COMPILE_TIME_ENV = {'CYSOUNDDEVICE_USE_JACK': 1}
+
+USE_JACK_AUDIO = True
+if '--no-jack' in sys.argv:
+    USE_JACK_AUDIO = False
+    sys.argv.remove('--no-jack')
+    COMPILE_TIME_ENV['CYSOUNDDEVICE_USE_JACK'] = 0
+
 def my_create_extension(template, kwds):
     name = kwds['name']
     if RTFD_BUILD:
@@ -55,6 +63,7 @@ ext_modules = cythonize(
         'binding':True,
     },
     create_extension=my_create_extension,
+    compile_time_env=COMPILE_TIME_ENV,
 )
 
 setup(
